@@ -9,9 +9,13 @@
 #include <kern/console.h>
 #include <kern/kdebug.h>
 #include <kern/dwarf_api.h>
+<<<<<<< HEAD
 #include <kern/pmap.h>
 #include <kern/kclock.h>
 
+=======
+#include<inc/x86.h>
+>>>>>>> master
 uint64_t end_debug;
 
 
@@ -19,9 +23,7 @@ void
 i386_init(void)
 {
     /* __asm __volatile("int $12"); */
-
 	extern char edata[], end[];
-
 	// Before doing anything else, complete the ELF loading process.
 	// Clear the uninitialized global data (BSS) section of our program.
 	// This ensures that all static/global variables start out zero.
@@ -30,9 +32,7 @@ i386_init(void)
 	// Initialize the console.
 	// Can't call cprintf until after we do this!
 	cons_init();
-
 	cprintf("6828 decimal is %o octal!\n", 6828);
-
     extern char end[];
     end_debug = read_section_headers((0x10000+KERNBASE), (uintptr_t)end); 
 
