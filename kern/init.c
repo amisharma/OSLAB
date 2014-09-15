@@ -9,13 +9,13 @@
 #include <kern/console.h>
 #include <kern/kdebug.h>
 #include <kern/dwarf_api.h>
-<<<<<<< HEAD
+//<<<<<<< HEAD
 #include <kern/pmap.h>
 #include <kern/kclock.h>
 
-=======
+//=======
 #include<inc/x86.h>
->>>>>>> master
+//>>>>>>> master
 uint64_t end_debug;
 
 
