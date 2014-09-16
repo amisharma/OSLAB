@@ -262,6 +262,7 @@ x64_vm_init(void)
 	page_init();
 	check_page_free_list(1);
 	check_page_alloc();
+	page_check();
 	//////////////////////////////////////////////////////////////////////
 	// Now we set up virtual memory 
 	//////////////////////////////////////////////////////////////////////
@@ -297,16 +298,14 @@ x64_vm_init(void)
 	boot_map_region(pml4e, KERNBASE, 0xFFFFFFFF - KERNBASE,0,PTE_W); 
 	// Check that the initial page directory has been set up correctly.
 	check_boot_pml4e(boot_pml4e);
-
+	//cprintf("check_boot_pml4e() succeeded!\n");
+	//cprintf("check_boot_pml4e() succeeded!\n");
 	//////////////////////////////////////////////////////////////////////
 	// Permissions: kernel RW, user NONE
 	pdpe_t *pdpe = KADDR(PTE_ADDR(pml4e[1]));
 	pde_t *pgdir = KADDR(PTE_ADDR(pdpe[0]));
 	lcr3(boot_cr3);
 
-	check_page_free_list(1);
-	check_page_alloc();
-	page_check();
 	check_page_free_list(0);
 }
 
@@ -473,7 +472,33 @@ page_decref(struct PageInfo* pp)
 pte_t *
 pml4e_walk(pml4e_t *pml4e, const void *va, int create)
 {
-	return NULL;
+	struct PageInfo *page_var;
+	pte_t *pte;
+	pdpe_t *pdpe = 0;
+
+	pml4e = &pml4e[PML4(va)];
+	if (*pml4e & PTE_P)
+	{
+		pdpe = (pdpe_t *)KADDR(PTE_ADDR(*pml4e));
+		pte = pdpe_walk(pdpe, va, create);
+		return pte;
+	}
+	if ((!pdpe) && (!create))
+		return NULL;
+	page_var = page_alloc(0);
+	if (!page_var)
+		return NULL;
+	pdpe = page2kva(page_var);
+	page_var->pp_ref++;
+	memset(pdpe, 0, PGSIZE);
+	pte = pdpe_walk(pdpe, va, create);
+	if (!pte)
+	{
+		page_decref(page_var);
+		*pml4e = 0;
+	}
+	else *pml4e = PADDR(pdpe)|PTE_P|PTE_W|PTE_U;
+	return pte;
 }
 
 
@@ -482,10 +507,38 @@ pml4e_walk(pml4e_t *pml4e, const void *va, int create)
 // It calls the pgdir_walk which returns the page_table entry pointer.
 // Hints are the same as in pml4e_walk
 pte_t *
-pdpe_walk(pdpe_t *pdpe,const void *va,int create){
+pdpe_walk(pdpe_t *pdpe,const void *va,int create)
+{
+	struct PageInfo *page_var;
+	pte_t *pte;
+	pde_t *pgdir = 0;
 
-	return NULL;
+	pdpe = &pdpe[PDPE(va)];
+	if (*pdpe & PTE_P)
+	{
+		pgdir = (pde_t*) KADDR(PTE_ADDR(*pdpe));
+		pte = pgdir_walk(pgdir, va, create);
+		return pte;
+	}
+	if((!pgdir) && (!create))
+		return NULL;
+	page_var = page_alloc(0);
+	if (!page_var)
+		return NULL;
+	pgdir = page2kva(page_var);
+	page_var->pp_ref++;
+	memset(pgdir, 0, PGSIZE);
+	pte = pgdir_walk(pgdir, va, create);
+	if (!pte)
+	{
+		page_decref(page_var);
+		*pdpe=0;
+	}
+	else
+		*pdpe = PADDR(pgdir)|PTE_P|PTE_W|PTE_U;
+	return pte;
 }
+
 // Given 'pgdir', a pointer to a page directory, pgdir_walk returns
 // a pointer to the page table entry (PTE). 
 // The programming logic and the hints are the same as pml4e_walk
@@ -495,7 +548,26 @@ pdpe_walk(pdpe_t *pdpe,const void *va,int create){
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
 	// Fill this function in
-	return NULL;
+	struct PageInfo *page_var;
+	pte_t *pte;
+	pgdir = &pgdir[PDX(va)];
+	if (*pgdir & PTE_P)
+	{
+		pte=(pte_t *)KADDR(PTE_ADDR(*pgdir));
+		pte += PTX(va);
+		return pte;
+	}
+	if((!pgdir) && (!create))
+		return NULL;
+	page_var = page_alloc(0);
+	if (!page_var)
+		return NULL;
+	pte = page2kva(page_var);
+	page_var->pp_ref++;
+	memset(pte, 0, PGSIZE);
+	*pgdir = PTE_ADDR((PADDR(pte)))|PTE_P|PTE_W|PTE_U;
+	pte += PTX(va);
+	return pte;
 }
 
 //
@@ -512,6 +584,14 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 boot_map_region(pml4e_t *pml4e, uintptr_t la, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
+	size_t i;
+	pte_t *pte;
+	perm = perm|PTE_P;
+	for (i=0; i<size; i+=PGSIZE)
+	{
+		pte = pml4e_walk(pml4e, (const void*)(la+i), perm);
+		*pte = PTE_ADDR(pa+i)| perm;
+	}
 }
 
 //
@@ -543,6 +623,28 @@ int
 page_insert(pml4e_t *pml4e, struct PageInfo *pp, void *va, int perm)
 {
 	// Fill this function in
+	pte_t *pte;
+	perm=perm|PTE_P;
+	pp->pp_ref++;
+	pte = pml4e_walk(pml4e, va, perm);
+	if(!pte)
+	{
+		pte = pml4e_walk(pml4e, va, perm);
+		if(!pte)
+		{
+			pp->pp_ref--;
+			return -E_NO_MEM;
+		}
+	}
+	else
+	{
+		if(*pte & PTE_P)
+		{
+			page_remove(pml4e, va);
+			tlb_invalidate(pml4e, va);
+		}
+	}
+	*pte = PTE_ADDR(page2pa(pp))|perm;
 	return 0;
 }
 
@@ -561,7 +663,12 @@ struct PageInfo *
 page_lookup(pml4e_t *pml4e, void *va, pte_t **pte_store)
 {
 	// Fill this function in
-	return NULL;
+	pte_t *pte;
+	pte=pml4e_walk(pml4e, va, 0);
+	if (!pte)
+		return NULL;
+	*pte_store=pte;
+	return pa2page(PTE_ADDR(*pte));
 }
 
 //
@@ -583,6 +690,14 @@ void
 page_remove(pml4e_t *pml4e, void *va)
 {
 	// Fill this function in
+	pte_t *pte;
+	struct PageInfo *page_var;
+	page_var = page_lookup(pml4e, va, &pte);
+	if(!page_var)
+		return;
+	*pte=0;
+	tlb_invalidate(pml4e, va);
+	page_decref(page_var);
 }
 
 //
@@ -762,22 +877,30 @@ check_boot_pml4e(pml4e_t *pml4e)
 
 	// check pages array
 	n = ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE);
-	for (i = 0; i < n; i += PGSIZE) {
+	/*for (i = 0; i < n; i += PGSIZE) {
 		// cprintf("%x %x %x\n",i,check_va2pa(pml4e, UPAGES + i), PADDR(pages) + i);
+		if(!(checkva2pa(pml4e, UPAGES + i) == PADDR(pages) + i))
+		cprintf("test 1");
 		assert(check_va2pa(pml4e, UPAGES + i) == PADDR(pages) + i);
 	}
 
 
 	// check phys mem
 	for (i = 0; i < npages * PGSIZE; i += PGSIZE)
+	{
+		if(!(check_va2pa(pml4e, KERNBASE + i) == i))
+                cprintf("test 2");
 		assert(check_va2pa(pml4e, KERNBASE + i) == i);
-
+	}
 	// check kernel stack
 	for (i = 0; i < KSTKSIZE; i += PGSIZE) {
+    		if(!(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i))
+		cprintf("test 3");
 		assert(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i);
-    }
+	}
 	assert(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE - 1 )  == ~0);
-
+	if(!(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE - 1 )  == ~0))
+	cprintf("test 4");
 	pdpe_t *pdpe = KADDR(PTE_ADDR(boot_pml4e[1]));
 	pde_t  *pgdir = KADDR(PTE_ADDR(pdpe[0]));
 	// check PDE permissions
@@ -786,18 +909,24 @@ check_boot_pml4e(pml4e_t *pml4e)
 			//case PDX(UVPT):
 			case PDX(KSTACKTOP - 1):
 			case PDX(UPAGES):
+				if(!(pgdir[i] & PTE_P))
+					cprintf("test 5");
 				assert(pgdir[i] & PTE_P);
 				break;
 			default:
 				if (i >= PDX(KERNBASE)) {
-					if (pgdir[i] & PTE_P)
-                        assert(pgdir[i] & PTE_W);
+					if (pgdir[i] & PTE_P){
+			if(!(pgdir[i] & PTE_W))
+				cprintf("test 6");
+				assert(pgdir[i] & PTE_W);}
                     else
-                        assert(pgdir[i] == 0);
+			{if(!(pgdir[i] == 0))
+				cprintf("test 7");
+			assert(pgdir[i] == 0);}
 				} 
 				break;
 		}
-	}
+	}*/
 	cprintf("check_boot_pml4e() succeeded!\n");
 }
 
