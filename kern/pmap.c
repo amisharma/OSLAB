@@ -260,9 +260,9 @@ x64_vm_init(void)
 	// memory management will go through the page_* functions. In
 	// particular, we can now map memory using boot_map_region or page_insert
 	page_init();
-	check_page_free_list(1);
-	check_page_alloc();
-	page_check();
+//	check_page_free_list(1);
+//	check_page_alloc();
+//	page_check();
 	//////////////////////////////////////////////////////////////////////
 	// Now we set up virtual memory 
 	//////////////////////////////////////////////////////////////////////
@@ -274,7 +274,7 @@ x64_vm_init(void)
 	// Your code goes here:
 
 	n= ROUNDUP(npages * sizeof(struct PageInfo), PGSIZE);
-	boot_map_region(pml4e, UPAGES, n, PADDR(pages), PTE_U);
+	boot_map_region(pml4e, UPAGES, n, PADDR(pages),PTE_P);
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
 	// stack.  The kernel stack grows down from virtual address KSTACKTOP.
@@ -286,7 +286,7 @@ x64_vm_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(pml4e, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack),PTE_W);
+	boot_map_region(pml4e, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack),PTE_P|PTE_W);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE. We have detected the number
@@ -295,17 +295,18 @@ x64_vm_init(void)
 	//      the PA range [0, npages*PGSIZE - KERNBASE)
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(pml4e, KERNBASE, 0xFFFFFFFF - KERNBASE,0,PTE_W); 
+	boot_map_region(pml4e, KERNBASE,(npages*PGSIZE),0,PTE_W|PTE_P); 
 	// Check that the initial page directory has been set up correctly.
 	check_boot_pml4e(boot_pml4e);
-	//cprintf("check_boot_pml4e() succeeded!\n");
-	//cprintf("check_boot_pml4e() succeeded!\n");
 	//////////////////////////////////////////////////////////////////////
 	// Permissions: kernel RW, user NONE
 	pdpe_t *pdpe = KADDR(PTE_ADDR(pml4e[1]));
 	pde_t *pgdir = KADDR(PTE_ADDR(pdpe[0]));
+	
 	lcr3(boot_cr3);
-
+	 check_page_free_list(1);
+      check_page_alloc();
+      page_check();
 	check_page_free_list(0);
 }
 
@@ -629,12 +630,8 @@ page_insert(pml4e_t *pml4e, struct PageInfo *pp, void *va, int perm)
 	pte = pml4e_walk(pml4e, va, perm);
 	if(!pte)
 	{
-		pte = pml4e_walk(pml4e, va, perm);
-		if(!pte)
-		{
 			pp->pp_ref--;
 			return -E_NO_MEM;
-		}
 	}
 	else
 	{
@@ -877,10 +874,8 @@ check_boot_pml4e(pml4e_t *pml4e)
 
 	// check pages array
 	n = ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE);
-	/*for (i = 0; i < n; i += PGSIZE) {
-		// cprintf("%x %x %x\n",i,check_va2pa(pml4e, UPAGES + i), PADDR(pages) + i);
-		if(!(checkva2pa(pml4e, UPAGES + i) == PADDR(pages) + i))
-		cprintf("test 1");
+	for (i = 0; i < n; i += PGSIZE) {
+	//	cprintf("%x %x %x\n",i,check_va2pa(pml4e, UPAGES + i), PADDR(pages) + i);
 		assert(check_va2pa(pml4e, UPAGES + i) == PADDR(pages) + i);
 	}
 
@@ -888,19 +883,13 @@ check_boot_pml4e(pml4e_t *pml4e)
 	// check phys mem
 	for (i = 0; i < npages * PGSIZE; i += PGSIZE)
 	{
-		if(!(check_va2pa(pml4e, KERNBASE + i) == i))
-                cprintf("test 2");
 		assert(check_va2pa(pml4e, KERNBASE + i) == i);
 	}
 	// check kernel stack
 	for (i = 0; i < KSTKSIZE; i += PGSIZE) {
-    		if(!(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i))
-		cprintf("test 3");
 		assert(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i);
 	}
 	assert(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE - 1 )  == ~0);
-	if(!(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE - 1 )  == ~0))
-	cprintf("test 4");
 	pdpe_t *pdpe = KADDR(PTE_ADDR(boot_pml4e[1]));
 	pde_t  *pgdir = KADDR(PTE_ADDR(pdpe[0]));
 	// check PDE permissions
@@ -909,24 +898,23 @@ check_boot_pml4e(pml4e_t *pml4e)
 			//case PDX(UVPT):
 			case PDX(KSTACKTOP - 1):
 			case PDX(UPAGES):
-				if(!(pgdir[i] & PTE_P))
-					cprintf("test 5");
 				assert(pgdir[i] & PTE_P);
 				break;
 			default:
-				if (i >= PDX(KERNBASE)) {
-					if (pgdir[i] & PTE_P){
-			if(!(pgdir[i] & PTE_W))
-				cprintf("test 6");
-				assert(pgdir[i] & PTE_W);}
-                    else
-			{if(!(pgdir[i] == 0))
-				cprintf("test 7");
-			assert(pgdir[i] == 0);}
+				if (i >= PDX(KERNBASE)) 
+				{
+					if (pgdir[i] & PTE_P)
+					{
+						assert(pgdir[i] & PTE_W);
+					}
+                		     else
+					{
+						assert(pgdir[i] == 0);
+					}
 				} 
 				break;
 		}
-	}*/
+	}
 	cprintf("check_boot_pml4e() succeeded!\n");
 }
 
