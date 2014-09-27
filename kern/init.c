@@ -9,6 +9,7 @@
 #include <kern/console.h>
 #include <kern/kdebug.h>
 #include <kern/dwarf_api.h>
+//<<<<<<< HEAD
 #include <kern/pmap.h>
 #include <kern/kclock.h>
 #include <kern/env.h>
@@ -18,6 +19,9 @@
 #include <kern/cpu.h>
 #include <kern/spinlock.h>
 
+//=======
+#include<inc/x86.h>
+//>>>>>>> master
 uint64_t end_debug;
 
 static void boot_aps(void);
@@ -27,9 +31,7 @@ void
 i386_init(void)
 {
     /* __asm __volatile("int $12"); */
-
 	extern char edata[], end[];
-
 	// Before doing anything else, complete the ELF loading process.
 	// Clear the uninitialized global data (BSS) section of our program.
 	// This ensures that all static/global variables start out zero.
@@ -38,9 +40,7 @@ i386_init(void)
 	// Initialize the console.
 	// Can't call cprintf until after we do this!
 	cons_init();
-
 	cprintf("6828 decimal is %o octal!\n", 6828);
-
     extern char end[];
     end_debug = read_section_headers((0x10000+KERNBASE), (uintptr_t)end); 
 
@@ -69,6 +69,7 @@ i386_init(void)
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
+<<<<<<< HEAD
 	ENV_CREATE(user_primes, ENV_TYPE_USER);
 #endif // TEST*
 
@@ -105,6 +106,20 @@ boot_aps(void)
 		while(c->cpu_status != CPU_STARTED)
 			;
 	}
+=======
+//	ENV_CREATE(user_divzero, ENV_TYPE_USER);
+//	ENV_CREATE(user_badsegment, ENV_TYPE_USER);
+//	ENV_CREATE(user_testbss, ENV_TYPE_USER);
+//	ENV_CREATE(user_hello, ENV_TYPE_USER);
+        ENV_CREATE(user_evilhello, ENV_TYPE_USER);
+#endif // TEST*
+	//ENV_CREATE(user_hello, ENV_TYPE_USER);
+  //      ENV_CREATE(user_testbss, ENV_TYPE_USER);
+	// We only have one user environment for now, so just run it.
+//	cprintf("\n\ncalling env_run\n");
+	env_run(&envs[0]);
+//	cprintf("success env_run_init");
+>>>>>>> lab3
 }
 
 // Setup code for APs

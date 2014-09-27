@@ -167,7 +167,7 @@ cga_putc(int c)
 	if (!(c & ~0xFF))
 		c |= 0x0700;
 
-	switch (c & 0xff) {
+	switch (c & 0xFF ) {
 	case '\b':
 		if (crt_pos > 0) {
 			crt_pos--;

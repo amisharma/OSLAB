@@ -1,7 +1,7 @@
 #include <inc/mmu.h>
 #include <inc/x86.h>
 #include <inc/assert.h>
-
+#include<inc/trap.h>
 #include <kern/pmap.h>
 #include <kern/trap.h>
 #include <kern/console.h>
@@ -66,17 +66,66 @@ static const char *trapname(int trapno)
 	return "(unknown trap)";
 }
 
-
 void
 trap_init(void)
 {
 	extern struct Segdesc gdt[];
-
 	// LAB 3: Your code here.
+
+extern void t_divide(void);
+extern void t_dblflt(void);
+extern void t_tss(void);
+extern void t_segnp(void);
+void t_stack(void);
+void t_gpflt(void);
+extern void t_pgflt(void);
+void t_debug(void);
+void t_nmi(void);
+void t_brkpt(void);
+void t_oflow(void);
+void t_bound(void);
+void t_illop(void);
+void t_device(void);
+void t_align(void);
+void t_mchk(void);
+void t_simderr(void);
+void t_fperr(void);
+void t_syscall(void);
+void i_timer(void);
+void i_kbd(void);
+void i_serial(void);
+	SETGATE(idt[T_DIVIDE], 0, GD_KT, t_divide, 0);
+	SETGATE(idt[T_DEBUG], 0, GD_KT, t_debug,0);
+	SETGATE(idt[T_BRKPT], 0, GD_KT, t_brkpt,3);
+	SETGATE(idt[T_DBLFLT], 0, GD_KT, t_dblflt,0);
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, t_syscall, 0);
+SETGATE(idt[T_DIVIDE], 0, GD_KT, t_divide, 0);
+	SETGATE(idt[T_DEBUG], 0, GD_KT, t_debug,0);
+	SETGATE(idt[T_NMI], 0, GD_KT, t_nmi,0);
+	SETGATE(idt[T_BRKPT], 0, GD_KT, t_brkpt,3);
+	SETGATE(idt[T_OFLOW], 0, GD_KT, t_oflow,0);
+	SETGATE(idt[T_BOUND], 0, GD_KT, t_bound,0);
+	SETGATE(idt[T_ILLOP], 0, GD_KT, t_illop,0);
+	SETGATE(idt[T_DEVICE], 0, GD_KT, t_device,0);
+	SETGATE(idt[T_DBLFLT], 0, GD_KT, t_dblflt,0);
+	SETGATE(idt[T_TSS], 0, GD_KT, t_tss,0);
+	SETGATE(idt[T_SEGNP], 0, GD_KT, t_segnp,0);
+	SETGATE(idt[T_STACK], 0, GD_KT, t_stack,0);
+	SETGATE(idt[T_GPFLT], 0, GD_KT, t_gpflt,0);
+	SETGATE(idt[T_PGFLT], 0, GD_KT, t_pgflt,0);
+	SETGATE(idt[T_FPERR], 0, GD_KT, t_fperr,0);
+	SETGATE(idt[T_ALIGN], 0, GD_KT, t_align,0);
+        SETGATE(idt[T_MCHK], 0, GD_KT, t_mchk,0);
+	SETGATE(idt[T_SIMDERR], 0, GD_KT, t_simderr,0);
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, t_syscall, 3);
+	SETGATE(idt[IRQ_TIMER + IRQ_OFFSET], 0, GD_KT, i_timer, 0);
+	SETGATE(idt[IRQ_KBD + IRQ_OFFSET], 0, GD_KT, i_kbd, 0);
+	SETGATE(idt[IRQ_SERIAL + IRQ_OFFSET], 0, GD_KT, i_serial, 0);
     idt_pd.pd_lim = sizeof(idt)-1;
     idt_pd.pd_base = (uint64_t)idt;
 	// Per-CPU setup
 	trap_init_percpu();
+//	cprintf("success trap_init");
 }
 
 // Initialize and load the per-CPU TSS and IDT
@@ -178,6 +227,7 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+<<<<<<< HEAD
 
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
@@ -192,6 +242,24 @@ trap_dispatch(struct Trapframe *tf)
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
 
+=======
+	if(tf->tf_trapno==T_PGFLT)
+	{
+		page_fault_handler(tf);
+		return;
+	}
+	else if(tf->tf_trapno==T_BRKPT)
+        {
+                monitor(tf);
+                return;
+        }
+	else if(tf->tf_trapno==T_SYSCALL)
+	{//	cprintf("calling syscal'\n");
+		tf->tf_regs.reg_rax =syscall(tf->tf_regs.reg_rax,tf->tf_regs.reg_rdx,tf->tf_regs.reg_rcx,tf->tf_regs.reg_rbx,tf->tf_regs.reg_rdi,tf->tf_regs.reg_rsi);
+	//	cprintf("syscall exit\n");
+		return;
+	}
+>>>>>>> lab3
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
 	if (tf->tf_cs == GD_KT)
@@ -252,6 +320,7 @@ trap(struct Trapframe *tf)
 
 	// Dispatch based on what type of trap occurred
 	trap_dispatch(tf);
+<<<<<<< HEAD
 
 	// If we made it to this point, then no other environment was
 	// scheduled, so we should return to the current environment
@@ -260,6 +329,14 @@ trap(struct Trapframe *tf)
 		env_run(curenv);
 	else
 		sched_yield();
+=======
+	//cprintf("trap dispatch\n");
+	// Return to the current environment, which should be running.
+	assert(curenv && curenv->env_status == ENV_RUNNING);
+	//cprintf("trap dispatch2\n");
+	env_run(curenv);
+	//cprintf("trap dispatch2\n");
+>>>>>>> lab3
 }
 
 
