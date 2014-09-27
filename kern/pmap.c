@@ -750,6 +750,24 @@ static uintptr_t user_mem_check_addr;
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+	uint64_t * va_e=ROUNDUP((uint64_t *)va+len,PGSIZE);
+        uint64_t * va_s=ROUNDDOWN((uint64_t *)va,PGSIZE);
+	if((uint64_t)va+len>=ULIM)
+	{
+		user_mem_check_addr=(uintptr_t)va;
+		return -E_FAULT;
+	}
+	uintptr_t i;
+	pte_t *p;
+	for(i=(uintptr_t)va_s;i<(uintptr_t )va_e;i+=PGSIZE)
+	{
+		p=pml4e_walk(env->env_pml4e,(void *)i,0);
+		if((!p)||(*p&perm)!=perm)
+		{
+			user_mem_check_addr= (uintptr_t)((uint64_t *)va>(uint64_t *)i?(uint64_t *)va:(uint64_t *)i);
+			return -E_FAULT;
+		}
+	}
 	return 0;
 
 }

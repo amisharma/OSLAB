@@ -77,10 +77,11 @@ struct Pseudodesc gdt_pd = {
 envid2env(envid_t envid, struct Env **env_store, bool checkperm)
 {
 	struct Env *e;
-
+//	cprintf("envid2env %08x",envid);
 	// If envid is zero, return the current environment.
 	if (envid == 0) {
 		*env_store = curenv;
+	//	cprintf("envid2env %08x,return 0,curenv %08x\n,",envid,curenv->env_id);
 		return 0;
 	}
 
@@ -92,6 +93,7 @@ envid2env(envid_t envid, struct Env **env_store, bool checkperm)
 	e = &envs[ENVX(envid)];
 	if (e->env_status == ENV_FREE || e->env_id != envid) {
 		*env_store = 0;
+		cprintf("error 1 in envid2env\n");
 		return -E_BAD_ENV;
 	}
 
@@ -102,6 +104,7 @@ envid2env(envid_t envid, struct Env **env_store, bool checkperm)
 	// or an immediate child of the current environment.
 	if (checkperm && e != curenv && e->env_parent_id != curenv->env_id) {
 		*env_store = 0;
+		cprintf("error 2 in envid2env\n");
 		return -E_BAD_ENV;
 	}
 
@@ -123,7 +126,7 @@ env_init(void)
 	int i;
 	for(i=0;i<NENV;i++)
 	{
-		//envs[i].env_status=ENV_FREE;	
+		envs[i].env_status=ENV_FREE;	
 		envs[i].env_id=0;
 	}
 	env_free_list=&envs[0];
@@ -134,7 +137,7 @@ env_init(void)
 	envs[NENV-1].env_link=NULL;
 	// Per-CPU part of the initialization
 	env_init_percpu();
-	cprintf("success env_init");
+//	cprintf("success env_init");
 }
 
 // Load GDT and segment descriptors.
@@ -203,7 +206,6 @@ env_setup_vm(struct Env *e)
 	for(i=PML4(UTOP);i<NPDENTRIES;i++)
                 e->env_pml4e[i]=boot_pml4e[i];
 	 e->env_pml4e[PML4(UVPT)] = e->env_cr3 | PTE_P | PTE_U;
-	cprintf("success env_setup_vm");
 	return 0;
 }
 
@@ -307,7 +309,7 @@ region_alloc(struct Env *e, void *va, size_t len)
 			return;
 		}
 	}
-	cprintf("success region_alloc");
+//	cprintf("success region_alloc");
 }
 
 //
@@ -390,21 +392,21 @@ load_icode(struct Env *e, uint8_t *binary)
 				return;
 			}
 			region_alloc(e,(void *)prog_h->p_va,prog_h->p_memsz);
-			cprintf("calling lcr3_env");
+//			cprintf("calling lcr3_env");
 			lcr3(e->env_cr3);
 			memcpy((char *)prog_h->p_va,binary+prog_h->p_offset,prog_h->p_filesz);
 			//lcr3(e->env_cr3);
 			//lcr3(boot_cr3);
-			cprintf("success lcr3_env");
+//			cprintf("success lcr3_env");
 			if(prog_h->p_filesz<prog_h->p_memsz)
 			{
 				mem = prog_h->p_va + prog_h->p_filesz;
 				r_mem = prog_h->p_memsz - prog_h->p_filesz;
 				memset((void *)mem,0,r_mem);
 			}
-			cprintf("calling lcr3_boot");
+//			cprintf("calling lcr3_boot");
 			lcr3(boot_cr3);
-			cprintf("success lcr3_boot");
+//			cprintf("success lcr3_boot");
 		}
    	}
 //	lcr3(e->env_cr3);
@@ -413,21 +415,9 @@ load_icode(struct Env *e, uint8_t *binary)
         // at virtual address USTACKTOP - PGSIZE.
 	
 	//LAB 3: Your code here.
-	/*page1=page_alloc(0);
-	if(!page1)
-	{
-		panic("failed to alloc page in load_icode%e\n",-E_NO_MEM);
-		return;
-	}
-	err=page_insert(e->env_pml4e, page1,(void *)USTACKTOP -PGSIZE,PTE_P|PTE_W);
-	if(err==-E_NO_MEM)
-	{
-		panic("failed to insert new page in load_icode %e\n",err);
-	}
- 	e->elf = binary;*/
 	region_alloc(e,(void *)USTACKTOP-PGSIZE,PGSIZE);
 	e->env_tf.tf_rip=elf_h->e_entry;
-	cprintf("success load_icode!!!");
+//	cprintf("success load_icode!!!");
 	return;
 }
 
@@ -443,11 +433,12 @@ env_create(uint8_t *binary, enum EnvType type)
 {
 	// LAB 3: Your code here.
 	struct Env *env;
+	//cprintf("env_alloc");
 	env_alloc(&env,0);
 	env->env_type=type;
 	
 	load_icode(env,binary);
-	cprintf("success env_create");
+//	cprintf("success env_create");
 }
 
 //
@@ -582,14 +573,17 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
+	//cprintf("env_run1\n");
 	if((curenv)&&(curenv->env_status ==ENV_RUNNING))
 		curenv->env_status =ENV_RUNNABLE;
 	curenv=e;
+	//cprintf("env_run2\n");
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
 	lcr3(curenv->env_cr3);
+	//cprintf("env_run3\n");
 	env_pop_tf(&curenv->env_tf);
-	cprintf("success env_run");
+	//cprintf("success env_run");
 	//panic("env_run not yet implemented");
 }
 

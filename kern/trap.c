@@ -63,7 +63,9 @@ void
 trap_init(void)
 {
 	extern struct Segdesc gdt[];
-	extern void t_divide(void);
+	// LAB 3: Your code here.
+
+extern void t_divide(void);
 extern void t_dblflt(void);
 extern void t_tss(void);
 extern void t_segnp(void);
@@ -77,18 +79,20 @@ void t_oflow(void);
 void t_bound(void);
 void t_illop(void);
 void t_device(void);
-void t_syscall(void);
 void t_align(void);
 void t_mchk(void);
 void t_simderr(void);
 void t_fperr(void);
-
+void t_syscall(void);
 void i_timer(void);
 void i_kbd(void);
 void i_serial(void);
-	// LAB 3: Your code here.
-
 	SETGATE(idt[T_DIVIDE], 0, GD_KT, t_divide, 0);
+	SETGATE(idt[T_DEBUG], 0, GD_KT, t_debug,0);
+	SETGATE(idt[T_BRKPT], 0, GD_KT, t_brkpt,3);
+	SETGATE(idt[T_DBLFLT], 0, GD_KT, t_dblflt,0);
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, t_syscall, 0);
+SETGATE(idt[T_DIVIDE], 0, GD_KT, t_divide, 0);
 	SETGATE(idt[T_DEBUG], 0, GD_KT, t_debug,0);
 	SETGATE(idt[T_NMI], 0, GD_KT, t_nmi,0);
 	SETGATE(idt[T_BRKPT], 0, GD_KT, t_brkpt,3);
@@ -114,7 +118,7 @@ void i_serial(void);
     idt_pd.pd_base = (uint64_t)idt;
 	// Per-CPU setup
 	trap_init_percpu();
-	cprintf("success trap_init");
+//	cprintf("success trap_init");
 }
 
 // Initialize and load the per-CPU TSS and IDT
@@ -198,6 +202,17 @@ trap_dispatch(struct Trapframe *tf)
 		page_fault_handler(tf);
 		return;
 	}
+	else if(tf->tf_trapno==T_BRKPT)
+        {
+                monitor(tf);
+                return;
+        }
+	else if(tf->tf_trapno==T_SYSCALL)
+	{//	cprintf("calling syscal'\n");
+		tf->tf_regs.reg_rax =syscall(tf->tf_regs.reg_rax,tf->tf_regs.reg_rdx,tf->tf_regs.reg_rcx,tf->tf_regs.reg_rbx,tf->tf_regs.reg_rdi,tf->tf_regs.reg_rsi);
+	//	cprintf("syscall exit\n");
+		return;
+	}
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
 	if (tf->tf_cs == GD_KT)
@@ -241,10 +256,12 @@ trap(struct Trapframe *tf)
 
 	// Dispatch based on what type of trap occurred
 	trap_dispatch(tf);
-
+	//cprintf("trap dispatch\n");
 	// Return to the current environment, which should be running.
 	assert(curenv && curenv->env_status == ENV_RUNNING);
+	//cprintf("trap dispatch2\n");
 	env_run(curenv);
+	//cprintf("trap dispatch2\n");
 }
 
 

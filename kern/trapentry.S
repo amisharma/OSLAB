@@ -56,7 +56,7 @@ TRAPHANDLER(t_segnp, T_SEGNP)
 TRAPHANDLER(t_stack, T_STACK)	
 TRAPHANDLER(t_gpflt, T_GPFLT)	
 TRAPHANDLER(t_pgflt, T_PGFLT)	
-
+TRAPHANDLER_NOEC(t_syscall, T_SYSCALL)
 TRAPHANDLER_NOEC(t_divide, T_DIVIDE)	
 TRAPHANDLER_NOEC(t_debug, T_DEBUG)	
 TRAPHANDLER_NOEC(t_nmi, T_NMI)   
@@ -65,7 +65,6 @@ TRAPHANDLER_NOEC(t_oflow, T_OFLOW)
 TRAPHANDLER_NOEC(t_bound, T_BOUND) 
 TRAPHANDLER_NOEC(t_illop, T_ILLOP) 
 TRAPHANDLER_NOEC(t_device, T_DEVICE) 
-TRAPHANDLER_NOEC(t_syscall, T_SYSCALL)
 TRAPHANDLER_NOEC(t_fperr, T_FPERR)
 TRAPHANDLER_NOEC(t_align, T_ALIGN)
 TRAPHANDLER_NOEC(t_mchk, T_MCHK)
@@ -81,7 +80,7 @@ TRAPHANDLER_NOEC(i_serial, IRQ_SERIAL + IRQ_OFFSET)
  * Hint: Be sure to review the x64 calling convention from lab1
  *       for how to pass a pointer to the trapframe.
  */
-/*_alltraps:
+_alltraps:
         movw %ds, %r10;
         pushq %r10;
         movw %es, %r10;
@@ -92,14 +91,3 @@ TRAPHANDLER_NOEC(i_serial, IRQ_SERIAL + IRQ_OFFSET)
         movw %r10, %es
         movq %rsp,%rdi
         call trap;
-*/_alltraps:
-	subq $8,%rsp
-	movw %es, (%rsp)
-	subq $8,%rsp
-	movw %ds, (%rsp)
-	PUSHA
-	movw $GD_KD, %ax
-	movw %ax, %ds
-	movw %ax, %es
-	movq %rsp, %rdi
-	call trap
