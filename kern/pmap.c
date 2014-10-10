@@ -24,7 +24,7 @@ pml4e_t *boot_pml4e;		// Kernel's initial page directory
 physaddr_t boot_cr3;		// Physical address of boot time page directory
 struct PageInfo *pages;		// Physical page state array
 static struct PageInfo *page_free_list;	// Free list of physical pages
-
+pml4e_t * pml4e=0;
 // --------------------------------------------------------------
 // Detect machine's physical memory setup.
 // --------------------------------------------------------------
@@ -235,7 +235,7 @@ boot_alloc(uint32_t n)
 void
 x64_vm_init(void)
 {
-	pml4e_t* pml4e;
+	//pml4e_t* pml4e;
 	uint32_t cr0;
 	uint64_t n;
 	int r;
@@ -267,9 +267,9 @@ x64_vm_init(void)
 	// memory management will go through the page_* functions. In
 	// particular, we can now map memory using boot_map_region or page_insert
 	page_init();
-//	check_page_free_list(1);
-//	check_page_alloc();
-//	page_check();
+	check_page_free_list(1);
+	check_page_alloc();
+	page_check();
 	//////////////////////////////////////////////////////////////////////
 	// Now we set up virtual memory 
 	//////////////////////////////////////////////////////////////////////
@@ -326,10 +326,10 @@ x64_vm_init(void)
 	pde_t *pgdir = KADDR(PTE_ADDR(pdpe[0]));
 	
 	lcr3(boot_cr3);
-	 check_page_free_list(1);
-      check_page_alloc();
-      page_check();
-	check_page_free_list(0);
+//	 check_page_free_list(1);
+  //    check_page_alloc();
+    //  page_check();
+//	check_page_free_list(0);
 }
 
 
@@ -355,7 +355,16 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
+	int n;
+	//boot_map_region(pml4e, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack),PTE_P|PTE_W);
+	for (n = 0; n < NCPU; n++) 
+	{
+                uint64_t base = KSTACKTOP - (KSTKSIZE + KSTKGAP) * (n);
+		boot_map_region(pml4e, base-KSTKSIZE, (KSTKSIZE), PADDR(percpu_kstacks[n]),PTE_P|PTE_W)
+;
+//		boot_map_region(pml4e, base-(KSTKSIZE + KSTKGAP), (KSTKGAP), PADDR(percpu_kstacks[n]-KSTKGAP),PTE_W);
 
+	}
 }
 
 // --------------------------------------------------------------
@@ -401,12 +410,17 @@ page_init(void)
 	int count =0;
 	struct PageInfo* last = NULL;
 	pages[0].pp_ref=0;
+	pages[0].pp_link=NULL;
 	for (i = 1; i < npages; i++) {
 		pages[i].pp_ref = 0;
 		pages[i].pp_link=NULL;
 		if(((page2pa(pages+i))>=IOPHYSMEM) && ((page2pa(pages+i))<PADDR(boot_alloc(0))))
 			continue;
-        if(last)
+        if(((page2pa(pages+i))==MPENTRY_PADDR))
+		{//cprintf("test_MPENTRY_PADDR\n");	
+		continue;
+		}
+	if(last)
             last->pp_link = &pages[i];
         else
             page_free_list = &pages[i];
@@ -535,7 +549,7 @@ pml4e_walk(pml4e_t *pml4e, const void *va, int create)
 		pte = pdpe_walk(pdpe, va, create);
 		return pte;
 	}
-	if ((!pdpe) && (!create))
+	if (!create)
 		return NULL;
 	page_var = page_alloc(0);
 	if (!page_var)
@@ -572,7 +586,7 @@ pdpe_walk(pdpe_t *pdpe,const void *va,int create)
 		pte = pgdir_walk(pgdir, va, create);
 		return pte;
 	}
-	if((!pgdir) && (!create))
+	if(!create)
 		return NULL;
 	page_var = page_alloc(0);
 	if (!page_var)
@@ -609,7 +623,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 		pte += PTX(va);
 		return pte;
 	}
-	if((!pgdir) && (!create))
+	if(!create)
 		return NULL;
 	page_var = page_alloc(0);
 	if (!page_var)
@@ -793,7 +807,17 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	uintptr_t base2 = base;
+	size=ROUNDUP(size,PGSIZE);
+	if(base+size>MMIOLIM)
+	{
+		panic("size out of bounds in mmio_map_region");
+		return (void *)base;
+	}
+	boot_map_region(boot_pml4e,base2,size,pa,PTE_PCD|PTE_PWT|PTE_W);
+	base=base+size;
+	return (void *)base2;
+	//panic("mmio_map_region not implemented");
 }
 
 static uintptr_t user_mem_check_addr;
@@ -928,7 +952,7 @@ check_page_free_list(bool only_low_memory)
 
 //
 // Check the physical page allocator (page_alloc(), page_free(),
-// and page_init()).
+// and boot_page_init()).
 //
 static void
 check_page_alloc(void)
@@ -1039,26 +1063,30 @@ check_boot_pml4e(pml4e_t *pml4e)
 	// check phys mem
 	for (i = 0; i < npages * PGSIZE; i += PGSIZE)
 	{
+		if(!(check_va2pa(pml4e, KERNBASE + i) == i))
+		cprintf("i=%x,n= %x,pa=%x \n",i,npages*PGSIZE,check_va2pa(pml4e, KERNBASE + i));
 		assert(check_va2pa(pml4e, KERNBASE + i) == i);
 	}
 	// check kernel stack
-<<<<<<< HEAD
+//<<<<<<< HEAD/
 	// (updated in lab 4 to check per-CPU kernel stacks)
 	for (n = 0; n < NCPU; n++) {
 		uint64_t base = KSTACKTOP - (KSTKSIZE + KSTKGAP) * (n + 1);
 		for (i = 0; i < KSTKSIZE; i += PGSIZE)
-			assert(check_va2pa(pml4e, base + KSTKGAP + i)
-			       == PADDR(percpu_kstacks[n]) + i);
+			{
+			cprintf("cpu_no=%d\n",n);
+			assert(check_va2pa(pml4e, base + KSTKGAP + i)== PADDR(percpu_kstacks[n]) + i);
+		}
 		for (i = 0; i < KSTKGAP; i += PGSIZE)
 			assert(check_va2pa(pml4e, base + i) == ~0);
 	}
 
-=======
+//=======
 	for (i = 0; i < KSTKSIZE; i += PGSIZE) {
 		assert(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i);
 	}
 	assert(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE - 1 )  == ~0);
->>>>>>> lab3
+//>>>>>>> lab3
 	pdpe_t *pdpe = KADDR(PTE_ADDR(boot_pml4e[1]));
 	pde_t  *pgdir = KADDR(PTE_ADDR(pdpe[0]));
 	// check PDE permissions
@@ -1099,25 +1127,25 @@ check_va2pa(pml4e_t *pml4e, uintptr_t va)
 	pte_t *pte;
 	pdpe_t *pdpe;
 	pde_t *pde;
-	// cprintf("%x", va);
+//	cprintf("check_va2pa %x ", va);
 	pml4e = &pml4e[PML4(va)];
-	// cprintf(" %x %x " , PML4(va), *pml4e);
+//	 cprintf(" %x %x " , PML4(va), *pml4e);
 	if(!(*pml4e & PTE_P))
 		return ~0;
 	pdpe = (pdpe_t *) KADDR(PTE_ADDR(*pml4e));
-	// cprintf(" %x %x " , pdpe, *pdpe);
+//	 cprintf(" %x %x " , pdpe, *pdpe);
 	if (!(pdpe[PDPE(va)] & PTE_P))
 		return ~0;
 	pde = (pde_t *) KADDR(PTE_ADDR(pdpe[PDPE(va)]));
-	// cprintf(" %x %x " , pde, *pde);
+//	 cprintf(" %x %x " , pde, *pde);
 	pde = &pde[PDX(va)];
 	if (!(*pde & PTE_P))
 		return ~0;
 	pte = (pte_t*) KADDR(PTE_ADDR(*pde));
-	// cprintf(" %x %x " , pte, *pte);
+//	 cprintf(" %x %x " , pte, *pte);
 	if (!(pte[PTX(va)] & PTE_P))
 		return ~0;
-	// cprintf(" %x %x\n" , PTX(va),  PTE_ADDR(pte[PTX(va)]));
+//	 cprintf(" %x %x\n" , PTX(va),  PTE_ADDR(pte[PTX(va)]));
 	return PTE_ADDR(pte[PTX(va)]);
 }
 

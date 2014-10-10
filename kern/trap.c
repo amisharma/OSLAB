@@ -227,7 +227,7 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
-<<<<<<< HEAD
+//<<<<<<< HEAD
 
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
@@ -242,7 +242,7 @@ trap_dispatch(struct Trapframe *tf)
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
 
-=======
+//=======
 	if(tf->tf_trapno==T_PGFLT)
 	{
 		page_fault_handler(tf);
@@ -259,7 +259,7 @@ trap_dispatch(struct Trapframe *tf)
 	//	cprintf("syscall exit\n");
 		return;
 	}
->>>>>>> lab3
+//>>>>>>> lab3
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
 	if (tf->tf_cs == GD_KT)
@@ -320,7 +320,7 @@ trap(struct Trapframe *tf)
 
 	// Dispatch based on what type of trap occurred
 	trap_dispatch(tf);
-<<<<<<< HEAD
+//<<<<<<< HEAD
 
 	// If we made it to this point, then no other environment was
 	// scheduled, so we should return to the current environment
@@ -329,14 +329,14 @@ trap(struct Trapframe *tf)
 		env_run(curenv);
 	else
 		sched_yield();
-=======
+//=======
 	//cprintf("trap dispatch\n");
 	// Return to the current environment, which should be running.
 	assert(curenv && curenv->env_status == ENV_RUNNING);
 	//cprintf("trap dispatch2\n");
 	env_run(curenv);
 	//cprintf("trap dispatch2\n");
->>>>>>> lab3
+//>>>>>>> lab3
 }
 
 
