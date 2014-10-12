@@ -1,5 +1,6 @@
 /* See COPYRIGHT for copyright information. */
 
+
 #include <inc/x86.h>
 #include <inc/mmu.h>
 #include <inc/error.h>
@@ -289,10 +290,10 @@ x64_vm_init(void)
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
 	n = ROUNDUP(NENV * sizeof(struct Env), PGSIZE);
-	boot_map_region(pml4e, UENVS, n, PADDR(envs),PTE_U| PTE_P);
+	boot_map_region(boot_pml4e, UENVS, n, PADDR(envs),PTE_U| PTE_P);
 //=======
 	n= ROUNDUP(npages * sizeof(struct PageInfo), PGSIZE);
-	boot_map_region(pml4e, UPAGES, n, PADDR(pages),PTE_P);
+	boot_map_region(boot_pml4e, UPAGES, n, PADDR(pages),PTE_P);
 //>>>>>>> lab2
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -305,7 +306,7 @@ x64_vm_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(pml4e, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack),PTE_P|PTE_W);
+//	boot_map_region(boot_pml4e, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack),PTE_P|PTE_W);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE. We have detected the number
@@ -314,7 +315,7 @@ x64_vm_init(void)
 	//      the PA range [0, npages*PGSIZE - KERNBASE)
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(pml4e, KERNBASE,(npages*PGSIZE),0,PTE_W|PTE_P); 
+	boot_map_region(boot_pml4e, KERNBASE,(npages*PGSIZE),0,PTE_W|PTE_P); 
 	// Check that the initial page directory has been set up correctly.
 	// Initialize the SMP-related parts of the memory map
 	mem_init_mp();
@@ -360,6 +361,7 @@ mem_init_mp(void)
 	for (n = 0; n < NCPU; n++) 
 	{
                 uint64_t base = KSTACKTOP - (KSTKSIZE + KSTKGAP) * (n);
+//		cprintf("cpu no=%d, stack physical address address=%x, stack virtual address=%x\n",n,PADDR(percpu_kstacks[n]),base-KSTKSIZE);
 		boot_map_region(pml4e, base-KSTKSIZE, (KSTKSIZE), PADDR(percpu_kstacks[n]),PTE_P|PTE_W)
 ;
 //		boot_map_region(pml4e, base-(KSTKSIZE + KSTKGAP), (KSTKGAP), PADDR(percpu_kstacks[n]-KSTKGAP),PTE_W);
@@ -658,6 +660,8 @@ boot_map_region(pml4e_t *pml4e, uintptr_t la, size_t size, physaddr_t pa, int pe
 		pte = pml4e_walk(pml4e, (const void*)(la+i), perm);
 		*pte = PTE_ADDR(pa+i)| perm;
 	}
+//	if(pa==PADDR(bootstack))
+//	cprintf("boot stack mapped at virtual address=%x, size=%d, physical address=%x\n",la,size,pa);
 }
 
 //
@@ -1074,7 +1078,7 @@ check_boot_pml4e(pml4e_t *pml4e)
 		uint64_t base = KSTACKTOP - (KSTKSIZE + KSTKGAP) * (n + 1);
 		for (i = 0; i < KSTKSIZE; i += PGSIZE)
 			{
-			cprintf("cpu_no=%d\n",n);
+	//		cprintf("cpu_no=%d\n",n);
 			assert(check_va2pa(pml4e, base + KSTKGAP + i)== PADDR(percpu_kstacks[n]) + i);
 		}
 		for (i = 0; i < KSTKGAP; i += PGSIZE)
@@ -1083,7 +1087,8 @@ check_boot_pml4e(pml4e_t *pml4e)
 
 //=======
 	for (i = 0; i < KSTKSIZE; i += PGSIZE) {
-		assert(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i);
+//	cprintf("virtual address=%x,physcial address=%x,physical address of cpu-=%x,i=%d\n",check_va2pa(pml4e,KSTACKTOP - KSTKSIZE + i),PADDR(bootstack) + i,PADDR(percpu_kstacks[0]),i);	
+//	assert(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i);
 	}
 	assert(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE - 1 )  == ~0);
 //>>>>>>> lab3
