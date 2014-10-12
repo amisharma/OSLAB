@@ -73,20 +73,15 @@ i386_init(void)
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-//<<<<<<< HEAD
+
 	 //cprintf("creating user_yield\n");	
-//ENV_CREATE(user_primes, ENV_TYPE_USER);
-	 //ENV_CREATE(user_yield, ENV_TYPE_USER);
+	ENV_CREATE(user_yield, ENV_TYPE_USER); 
+	ENV_CREATE(user_yield, ENV_TYPE_USER);
+//	ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
 #endif // TEST*
 
 	// Schedule and run the first user environment!
-	//cprintf("creating user_yield\n");
-	int i;
-	for (i = 0; i < NCPU; i++)
-	ENV_CREATE(user_yield, ENV_TYPE_USER);
-        ENV_CREATE(user_yield, ENV_TYPE_USER);
- 	ENV_CREATE(user_yield, ENV_TYPE_USER);
-		
+	//cprintf("creating user_yield\n");	
 sched_yield();
 }
 
@@ -119,23 +114,6 @@ boot_aps(void)
 		while(c->cpu_status != CPU_STARTED)
 			;
 	}
-//=======
-//	ENV_CREATE(user_divzero, ENV_TYPE_USER);
-//	ENV_CREATE(user_badsegment, ENV_TYPE_USER);
-//	ENV_CREATE(user_testbss, ENV_TYPE_USER);
-//	ENV_CREATE(user_hello, ENV_TYPE_USER);
-        ENV_CREATE(user_evilhello, ENV_TYPE_USER);
-	int i;
-        for (i = 0; i < NCPU; i++)
-        ENV_CREATE(user_yield, ENV_TYPE_USER);
-//#endif // TEST*
-	//ENV_CREATE(user_hello, ENV_TYPE_USER);
-  //      ENV_CREATE(user_testbss, ENV_TYPE_USER);
-	// We only have one user environment for now, so just run it.
-//	cprintf("\n\ncalling env_run\n");
-	env_run(&envs[0]);
-//	cprintf("success env_run_init");
-//>>>>>>> lab3
 }
 
 // Setup code for APs

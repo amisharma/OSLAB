@@ -159,15 +159,14 @@ trap_init_percpu(void)
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.
 	//ts.tsi_esp0 = KSTACKTOP;
-
 	// Initialize the TSS slot of the gdt.
-	SETTSS((struct SystemSegdesc64 *)(&gdt[(GD_TSS0>>3)+2*(cpunum())]),STS_T64A, (uint64_t) (cpu_state),sizeof(struct Taskstate), 0);
+	SETTSS((struct SystemSegdesc64 *)(&gdt[(GD_TSS0>>3)+2*(cpunum())]),STS_T64A, (uint64_t) (&thiscpu->cpu_ts),sizeof(struct Taskstate), 0);
 /*	gdt[(GD_TSS0>>3)+(2*cpunum())]=SEG64(STS_T64A,(uint64_t)(&(thiscpu->cpu_ts)),sizeof(struct Taskstate),0);
 	gdt[(GD_TSS0>>3)+(2*cpunum())].sd_s=0;
 */	// Load the TSS selector (like other segment selectors, the
 	// bottom three bits are special; we leave them 0);
-	    ltr(GD_TSS0 + ((2*cpunum()<<3)));
-
+	    ltr(GD_TSS0 + ((2*cpunum()<<3)&~07));
+//	cprintf("trap state setup for cpu %d\n",cpunum());
 
 	// Load the IDT
 	lidt(&idt_pd);
