@@ -429,7 +429,7 @@ load_icode(struct Env *e, uint8_t *binary)
 	//LAB 3: Your code here.
 	region_alloc(e,(void *)USTACKTOP-PGSIZE,PGSIZE);
 	e->env_tf.tf_rip=elf_h->e_entry;
-//	cprintf("success load_icode!!!");
+	//cprintf("success load_icode!!!");
 	return;
 }
 
@@ -445,12 +445,12 @@ env_create(uint8_t *binary, enum EnvType type)
 {
 	// LAB 3: Your code here.
 	struct Env *env;
-	//cprintf("env_alloc");
+//	cprintf("env_alloc\n");
 	env_alloc(&env,0);
 	env->env_type=type;
 	
 	load_icode(env,binary);
-//	cprintf("success env_create");
+//	cprintf("success env_create\n");
 }
 
 //

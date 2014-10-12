@@ -72,7 +72,9 @@ env_destroy(curenv);
 static void
 sys_yield(void)
 {
+//	cprintf("enterting sys_yield\n");
 	sched_yield();
+//	cprintf("exiting sys_yield\n");
 }
 
 // Allocate a new environment.
@@ -292,7 +294,9 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 	case SYS_env_destroy:
 //		cprintf("calling sys_env_destroy\n");
 		return sys_env_destroy(a1);
-
+	case SYS_yield:
+		sys_yield();
+		return 0; 
 	default:
 		cprintf("\nSYS_error%d",syscallno);
 		return -E_NO_SYS;

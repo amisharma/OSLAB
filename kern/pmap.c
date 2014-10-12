@@ -362,7 +362,7 @@ mem_init_mp(void)
 	{
                 uint64_t base = KSTACKTOP - (KSTKSIZE + KSTKGAP) * (n);
 //		cprintf("cpu no=%d, stack physical address address=%x, stack virtual address=%x\n",n,PADDR(percpu_kstacks[n]),base-KSTKSIZE);
-		boot_map_region(pml4e, base-KSTKSIZE, (KSTKSIZE), PADDR(percpu_kstacks[n]),PTE_P|PTE_W)
+		boot_map_region(boot_pml4e, base-KSTKSIZE, (KSTKSIZE), PADDR(percpu_kstacks[n]),PTE_P|PTE_W)
 ;
 //		boot_map_region(pml4e, base-(KSTKSIZE + KSTKGAP), (KSTKGAP), PADDR(percpu_kstacks[n]-KSTKGAP),PTE_W);
 
@@ -1086,10 +1086,10 @@ check_boot_pml4e(pml4e_t *pml4e)
 	}
 
 //=======
-	for (i = 0; i < KSTKSIZE; i += PGSIZE) {
+	//for (i = 0; i < KSTKSIZE; i += PGSIZE) {
 //	cprintf("virtual address=%x,physcial address=%x,physical address of cpu-=%x,i=%d\n",check_va2pa(pml4e,KSTACKTOP - KSTKSIZE + i),PADDR(bootstack) + i,PADDR(percpu_kstacks[0]),i);	
 //	assert(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i);
-	}
+	//}
 	assert(check_va2pa(pml4e, KSTACKTOP - KSTKSIZE - 1 )  == ~0);
 //>>>>>>> lab3
 	pdpe_t *pdpe = KADDR(PTE_ADDR(boot_pml4e[1]));

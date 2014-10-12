@@ -50,31 +50,44 @@ i386_init(void)
 	// Lab 3 user environment initialization functions
 	env_init();
 	trap_init();
+        //cprintf("test_init1");
 
 	// Lab 4 multiprocessor initialization functions
 	mp_init();
 	lapic_init();
+	 //       cprintf("test_init2");
 
 	// Lab 4 multitasking initialization functions
 	pic_init();
+       // cprintf("test_init3");
 
 	// Acquire the big kernel lock before waking up APs
 	// Your code here:
 	lock_kernel();
 	// Starting non-boot CPUs
+        //cprintf("test_init4");
 	boot_aps();
-
+	//cprintf("test_init");
 #if defined(TEST)
 	// Don't touch -- used by grading script!
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
 //<<<<<<< HEAD
-	ENV_CREATE(user_primes, ENV_TYPE_USER);
+	 //cprintf("creating user_yield\n");	
+//ENV_CREATE(user_primes, ENV_TYPE_USER);
+	 //ENV_CREATE(user_yield, ENV_TYPE_USER);
 #endif // TEST*
 
 	// Schedule and run the first user environment!
-	sched_yield();
+	//cprintf("creating user_yield\n");
+	int i;
+	for (i = 0; i < NCPU; i++)
+	ENV_CREATE(user_yield, ENV_TYPE_USER);
+        ENV_CREATE(user_yield, ENV_TYPE_USER);
+ 	ENV_CREATE(user_yield, ENV_TYPE_USER);
+		
+sched_yield();
 }
 
 // While boot_aps is booting a given CPU, it communicates the per-core
@@ -112,6 +125,9 @@ boot_aps(void)
 //	ENV_CREATE(user_testbss, ENV_TYPE_USER);
 //	ENV_CREATE(user_hello, ENV_TYPE_USER);
         ENV_CREATE(user_evilhello, ENV_TYPE_USER);
+	int i;
+        for (i = 0; i < NCPU; i++)
+        ENV_CREATE(user_yield, ENV_TYPE_USER);
 //#endif // TEST*
 	//ENV_CREATE(user_hello, ENV_TYPE_USER);
   //      ENV_CREATE(user_testbss, ENV_TYPE_USER);

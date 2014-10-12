@@ -165,8 +165,7 @@ trap_init_percpu(void)
 /*	gdt[(GD_TSS0>>3)+(2*cpunum())]=SEG64(STS_T64A,(uint64_t)(&(thiscpu->cpu_ts)),sizeof(struct Taskstate),0);
 	gdt[(GD_TSS0>>3)+(2*cpunum())].sd_s=0;
 */	// Load the TSS selector (like other segment selectors, the
-	// bottom three bits are special; we leave them 0)
-//	ltr(GD_TSS0+(cpunum()*sizeof(struct Segdesc)));
+	// bottom three bits are special; we leave them 0);
 	    ltr(GD_TSS0 + ((2*cpunum()<<3)));
 
 
