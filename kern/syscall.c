@@ -53,17 +53,17 @@ sys_env_destroy(envid_t envid)
 {
 	int r;
 	struct Env *e;
-//	cprintf("envid for sys_env_destroy[%08x],env[%08x]\n",envid,curenv->env_id);
+	cprintf("envid for sys_env_destroy[%08x],env[%08x]\n",envid,curenv->env_id);
 	if ((r = envid2env(envid, &e, 1)) < 0)
 {
-//		cprintf("envid for condition 1 sys_env_destroy%d\n",envid);
+		cprintf("envid for condition 1 sys_env_destroy%d\n",envid);
 		return r;}
 	if (e == curenv)
 		cprintf("[%08x] exiting gracefully\n", curenv->env_id);
 	else
 		cprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
-//	 cprintf("entering env_destroy[%08x]\n",envid);
-env_destroy(curenv);
+	 cprintf("entering env_destroy[%08x]\n",envid);
+	env_destroy(e);
 	cprintf("exiting sys_env_destroy[%08x]\n",envid);
 	return 0;
 }
