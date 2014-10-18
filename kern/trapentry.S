@@ -51,25 +51,25 @@
    pusha,popa so you will find these macros handy.
  */
 
-TRAPHANDLER(t_dblflt, T_DBLFLT)	
-TRAPHANDLER(t_tss, T_TSS)	
-TRAPHANDLER(t_segnp, T_SEGNP)	
-TRAPHANDLER(t_stack, T_STACK)	
-TRAPHANDLER(t_gpflt, T_GPFLT)	
-TRAPHANDLER(t_pgflt, T_PGFLT)	
-TRAPHANDLER_NOEC(t_syscall, T_SYSCALL)
-TRAPHANDLER_NOEC(t_divide, T_DIVIDE)	
-TRAPHANDLER_NOEC(t_debug, T_DEBUG)	
-TRAPHANDLER_NOEC(t_nmi, T_NMI)   
-TRAPHANDLER_NOEC(t_brkpt, T_BRKPT)   
-TRAPHANDLER_NOEC(t_oflow, T_OFLOW) 
-TRAPHANDLER_NOEC(t_bound, T_BOUND) 
-TRAPHANDLER_NOEC(t_illop, T_ILLOP) 
-TRAPHANDLER_NOEC(t_device, T_DEVICE) 
-TRAPHANDLER_NOEC(t_fperr, T_FPERR)
-TRAPHANDLER_NOEC(t_align, T_ALIGN)
-TRAPHANDLER_NOEC(t_mchk, T_MCHK)
-TRAPHANDLER_NOEC(t_simderr, T_SIMDERR)
+TRAPHANDLER(xt_dblflt, T_DBLFLT)	
+TRAPHANDLER(xt_tss, T_TSS)	
+TRAPHANDLER(xt_segnp, T_SEGNP)	
+TRAPHANDLER(xt_stack, T_STACK)	
+TRAPHANDLER(xt_gpflt, T_GPFLT)	
+TRAPHANDLER(xt_pgflt, T_PGFLT)	
+TRAPHANDLER_NOEC(xt_syscall, T_SYSCALL)
+TRAPHANDLER_NOEC(xt_divide, T_DIVIDE)	
+TRAPHANDLER_NOEC(xt_debug, T_DEBUG)	
+TRAPHANDLER_NOEC(xt_nmi, T_NMI)   
+TRAPHANDLER_NOEC(xt_brkpt, T_BRKPT)   
+TRAPHANDLER_NOEC(xt_oflow, T_OFLOW) 
+TRAPHANDLER_NOEC(xt_bound, T_BOUND) 
+TRAPHANDLER_NOEC(xt_illop, T_ILLOP) 
+TRAPHANDLER_NOEC(xt_device, T_DEVICE) 
+TRAPHANDLER_NOEC(xt_fperr, T_FPERR)
+TRAPHANDLER_NOEC(xt_align, T_ALIGN)
+TRAPHANDLER_NOEC(xt_mchk, T_MCHK)
+TRAPHANDLER_NOEC(xt_simderr, T_SIMDERR)
 
 TRAPHANDLER_NOEC(i_timer, IRQ_OFFSET + IRQ_TIMER)
 TRAPHANDLER_NOEC(i_kbd, IRQ_KBD + IRQ_OFFSET) 
@@ -82,13 +82,19 @@ TRAPHANDLER_NOEC(i_serial, IRQ_SERIAL + IRQ_OFFSET)
  *       for how to pass a pointer to the trapframe.
  */
 _alltraps:
-        movw %ds, %r10;
-        pushq %r10;
-        movw %es, %r10;
-        pushq %r10;
+        movw %ds, %r15;
+        pushq %r15;
+        movw %es, %r15;
+        pushq %r15;
         PUSHA;
-        movw $GD_KD, %r10;
-        movw %r10, %ds
-        movw %r10, %es
+        movw $GD_KD, %r15
+        movw %r15, %ds
+        movw %r15, %es
         movq %rsp,%rdi
         call trap;
+	POPA_
+	popq %r15
+	movw %r15, %es
+	popq %r15
+	movw %r15, %ds
+	iret

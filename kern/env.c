@@ -127,18 +127,25 @@ env_init(void)
 	// Set up envs array
 	// LAB 3: Your code here.
 	int i;
+	struct Env *last=NULL;
 	for(i=0;i<NENV;i++)
 	{
 		envs[i].env_status=ENV_FREE;	
 		envs[i].env_id=0;
-	}
-	env_free_list=&envs[0];
+		envs[i].env_link=NULL;
+		if(last)
+			last->env_link=&envs[i];
+		else	
+			env_free_list=&envs[i];
+		last=&envs[i];
+}
+/*	env_free_list=&envs[0];
 	for(i=1;i<NENV-1;i++)
 	{
 		envs[i-1].env_link=(struct Env *)&envs[i];
 	}
 	envs[NENV-1].env_link=NULL;
-	// Per-CPU part of the initialization
+*/	// Per-CPU part of the initialization
 	env_init_percpu();
 //	cprintf("success env_init");
 }
@@ -180,11 +187,16 @@ env_setup_vm(struct Env *e)
 {
 	int r;
 	int i;
-	struct PageInfo *p = NULL,*p1=NULL,*p2=NULL;
+	struct PageInfo *p = NULL,*pp_pdpe=NULL,*pp_pgdir=NULL;
 	// Allocate a page for the page directory
 	if (!(p = page_alloc(0)))
 		return -E_NO_MEM;
-
+	pdpe_t *pdpe;
+	pdpe_t *pdpe1;
+	pde_t *pgdir;
+	pde_t *pgdir1;
+	pte_t *pte_cr3;
+	pte_t *pte_env;
 	// Now, set e->env_pgdir and initialize the page directory.
 	//
 	// Hint:
@@ -204,10 +216,22 @@ env_setup_vm(struct Env *e)
 
 	// LAB 3: Your code here.
 	p->pp_ref++;
-	e->env_pml4e = (pml4e_t *) page2kva(p);
-	e->env_cr3 = PADDR(e->env_pml4e);
-	for(i=PML4(UTOP);i<NPDENTRIES;i++)
-                e->env_pml4e[i]=boot_pml4e[i];
+	e->env_pml4e =  page2kva(p);
+	e->env_cr3 = page2pa(p);
+	if(!(pp_pdpe=page_alloc(0)))
+		return -E_NO_MEM;
+	pp_pdpe->pp_ref++;
+	pdpe=page2kva(pp_pdpe);
+	e->env_pml4e[PML4(UTOP)]=PADDR(pdpe)|PTE_P|PTE_U|PTE_W;
+	pdpe1=KADDR(PTE_ADDR(boot_pml4e[PML4(UTOP)]));
+	if(!(pp_pgdir = page_alloc(0)))
+		return -E_NO_MEM;
+	pp_pgdir->pp_ref++;
+	pgdir=page2kva(pp_pgdir);
+	pdpe[PDPE(UTOP)]=PADDR(pgdir)|PTE_P|PTE_U|PTE_W;
+	pgdir1=KADDR(PTE_ADDR(pdpe1[PDPE(UTOP)]));
+	for(i=PDX(UTOP);i<NPTENTRIES;i++)
+                pgdir[i]=pgdir1[i];
 	 e->env_pml4e[PML4(UVPT)] = e->env_cr3 | PTE_P | PTE_U;
 	return 0;
 }
@@ -227,7 +251,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	int r;
 	struct Env *e;
 
-	if (!(e = env_free_list))
+if (!(e = env_free_list))
 		return -E_NO_FREE_ENV;
 
 	// Allocate and set up the page directory for this environment.
@@ -269,7 +293,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 
 	// Enable interrupts while in user mode.
 	// LAB 4: Your code here.
-
+//	e->env_tf.tf_eflags=e->env_tf.tf_eflags|FL_IF;
 	// Clear the page fault handler until user installs one.
 	e->env_pgfault_upcall = 0;
 
@@ -394,7 +418,8 @@ load_icode(struct Env *e, uint8_t *binary)
 	//lcr3(e->env_cr3);
 	prog_h=(struct Proghdr *)((uint8_t *)elf_h+elf_h->e_phoff);
 	env_prog_h=prog_h+elf_h->e_phnum;
-	for(;prog_h<env_prog_h;prog_h++)
+//	lcr3(e->env_cr3);	
+for(;prog_h<env_prog_h;prog_h++)
 	{
 		if(prog_h->p_type==ELF_PROG_LOAD)
 		{
@@ -404,21 +429,21 @@ load_icode(struct Env *e, uint8_t *binary)
 				return;
 			}
 			region_alloc(e,(void *)prog_h->p_va,prog_h->p_memsz);
-//			cprintf("calling lcr3_env");
+			//cprintf("calling lcr3_env");
 			lcr3(e->env_cr3);
 			memcpy((char *)prog_h->p_va,binary+prog_h->p_offset,prog_h->p_filesz);
 			//lcr3(e->env_cr3);
 			//lcr3(boot_cr3);
-//			cprintf("success lcr3_env");
+			//cprintf("success lcr3_env");
 			if(prog_h->p_filesz<prog_h->p_memsz)
 			{
 				mem = prog_h->p_va + prog_h->p_filesz;
 				r_mem = prog_h->p_memsz - prog_h->p_filesz;
 				memset((void *)mem,0,r_mem);
 			}
-//			cprintf("calling lcr3_boot");
+			//cprintf("calling lcr3_boot");
 			lcr3(boot_cr3);
-//			cprintf("success lcr3_boot");
+			//cprintf("success lcr3_boot");
 		}
    	}
 //	lcr3(e->env_cr3);
@@ -427,9 +452,13 @@ load_icode(struct Env *e, uint8_t *binary)
         // at virtual address USTACKTOP - PGSIZE.
 	
 	//LAB 3: Your code here.
-	region_alloc(e,(void *)USTACKTOP-PGSIZE,PGSIZE);
+	//region_alloc(e,(void *)USTACKTOP-PGSIZE,PGSIZE);
 	e->env_tf.tf_rip=elf_h->e_entry;
+	region_alloc(e,(void *)(USTACKTOP-PGSIZE),PGSIZE);
+	//e->env_tf.tf_rsp=USTACKTOP;
 	//cprintf("success load_icode!!!");
+//	e->elf=binary;
+//	lcr3(boot_cr3);
 	return;
 }
 
@@ -446,10 +475,12 @@ env_create(uint8_t *binary, enum EnvType type)
 	// LAB 3: Your code here.
 	struct Env *env;
 //	cprintf("env_alloc\n");
-	env_alloc(&env,0);
-	env->env_type=type;
+	int val=env_alloc(&env,0);
+	if(val<0)
+		panic("env_create fail");
 	
 	load_icode(env,binary);
+	        env->env_type=type;
 //	cprintf("success env_create\n");
 }
 
@@ -603,13 +634,14 @@ env_run(struct Env *e)
 	if((curenv)&&(curenv->env_status ==ENV_RUNNING))
 		curenv->env_status =ENV_RUNNABLE;
 	curenv=e;
-	//cprintf("env_run2\n");
+//	cprintf("env_run2\n");
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
 	lcr3(curenv->env_cr3);
-	//cprintf("env_run3\n");
+//	cprintf("env_run3\n");
+	unlock_kernel();
 	env_pop_tf(&curenv->env_tf);
-	//cprintf("success env_run");
+//	cprintf("success env_run");
 	//panic("env_run not yet implemented");
 }
 

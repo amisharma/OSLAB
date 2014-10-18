@@ -96,7 +96,25 @@ struct UTrapframe {
 	/* the trap-time stack to return to */
 	uintptr_t utf_rsp;
 } __attribute__((packed));
-
+void xt_divide();
+void xt_debug();
+void xt_dblflt();
+void xt_syscall();
+void xt_nmi();
+void xt_brkpt();
+void xt_oflow();
+void xt_bound();
+void xt_illop();
+void xt_device();
+void xt_tss();
+void xt_segnp();
+void xt_stack();
+void xt_gpflt();
+void xt_pgflt();
+void xt_fperr();
+void xt_align();
+void xt_mchk();
+void xt_simderr();
 #endif /* !__ASSEMBLER__ */
 
 #endif /* !JOS_INC_TRAP_H */

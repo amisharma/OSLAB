@@ -35,17 +35,20 @@ sched_yield(void)
 		cur_env_id = ENVX(thiscpu->cpu_env->env_id);
 	for(i =0; i <NENV; i++)
 	{
-		if((envs[i].env_status==ENV_RUNNABLE))
+		cur_env_id=(cur_env_id+1)%NENV;
+		if((envs[cur_env_id].env_status==ENV_RUNNABLE))
 		{
 //			cprintf("sched env %d   ",i);
-			env_run(&envs[i]);
+			env_run(&envs[cur_env_id]);
 			flag=1;
 		}	
 	}
-	//cprintf("sched_yield\n");
-	if(!flag&&(envs[cur_env_id].env_status==ENV_RUNNING))
-		env_run(thiscpu->cpu_env);
-
+//	cprintf("sched_yield\n");
+	if(thiscpu->cpu_env&&(thiscpu->cpu_env->env_status==ENV_RUNNING))
+	{
+//			cprintf("sched_yield cpu\n");
+			env_run(thiscpu->cpu_env);
+	}
 //	cprintf("\nexiting sched_yield\n");
 	// sched_halt never returns
 	sched_halt();

@@ -306,7 +306,7 @@ x64_vm_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-//	boot_map_region(boot_pml4e, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack),PTE_P|PTE_W);
+	boot_map_region(boot_pml4e, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack),PTE_P|PTE_W);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE. We have detected the number
@@ -695,23 +695,26 @@ page_insert(pml4e_t *pml4e, struct PageInfo *pp, void *va, int perm)
 	// Fill this function in
 	pte_t *pte;
 	perm=perm|PTE_P;
-	pp->pp_ref++;
-	pte = pml4e_walk(pml4e, va, perm);
-	if(!pte)
+	//pp->pp_ref++;
+	pte = pml4e_walk(pml4e, va, 1);
+	if(pte==NULL)
 	{
-			pp->pp_ref--;
+	//		pp->pp_ref--;
 			return -E_NO_MEM;
 	}
 	else
 	{
 		if(*pte & PTE_P)
 		{
-			page_remove(pml4e, va);
-			tlb_invalidate(pml4e, va);
+				page_remove(pml4e, va);
+				tlb_invalidate(pml4e, va);
+			
 		}
-	}
+	pp->pp_ref++;
 	*pte = PTE_ADDR(page2pa(pp))|perm;
+	
 	return 0;
+	}
 }
 
 //
@@ -848,21 +851,26 @@ static uintptr_t user_mem_check_addr;
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
-	uint64_t * va_e=ROUNDUP((uint64_t *)va+len,PGSIZE);
-        uint64_t * va_s=ROUNDDOWN((uint64_t *)va,PGSIZE);
-	if((uint64_t)va+len>=ULIM)
+	size_t va_e,va_s;
+	va_e=(uintptr_t)ROUNDUP((uintptr_t)va+len,PGSIZE);
+        va_s=(uintptr_t)ROUNDDOWN((uintptr_t)va,PGSIZE);
+	perm=perm|PTE_P;
+	if((uint64_t)va>=ULIM)
 	{
 		user_mem_check_addr=(uintptr_t)va;
+		//cprintf("error in ULIM");
 		return -E_FAULT;
 	}
 	uintptr_t i;
 	pte_t *p;
-	for(i=(uintptr_t)va_s;i<(uintptr_t )va_e;i+=PGSIZE)
+	for(;va_s<va_e;va_s=va_s+PGSIZE)
 	{
-		p=pml4e_walk(env->env_pml4e,(void *)i,0);
-		if((!p)||(*p&perm)!=perm)
+		p=(pte_t *)pml4e_walk(env->env_pml4e,(const void *)va_s,0);
+		if((!p)||(!( *p & perm)))
 		{
-			user_mem_check_addr= (uintptr_t)((uint64_t *)va>(uint64_t *)i?(uint64_t *)va:(uint64_t *)i);
+			user_mem_check_addr=(uintptr_t)va>va_s?(uintptr_t)va:(uintptr_t)va_s;
+			if(!p)
+		//	cprintf("errot in permission");
 			return -E_FAULT;
 		}
 	}

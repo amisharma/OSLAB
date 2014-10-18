@@ -96,7 +96,7 @@ sys_exofork(void)
 	r=env_alloc(&child,curenv->env_id);
 	//if(r==-E_NO_FREE_ENV)
 	//	return -E_NO_FREE_ENV;
-	cprintf("entering sys_exofork env=%x,child=%x\n",curenv->env_id,child->env_id);
+	//cprintf("entering sys_exofork env=%x,child=%x\n",curenv->env_id,child->env_id);
 	if(r<0)
 	{
 		if(r==-E_NO_FREE_ENV)
@@ -112,8 +112,8 @@ sys_exofork(void)
 	}
 	child->env_status=ENV_NOT_RUNNABLE;
 	child->env_tf=curenv->env_tf;
-	(child->env_tf).tf_regs.reg_rax=0;
-	child->env_parent_id=curenv->env_id;
+	child->env_tf.tf_regs.reg_rax=0;
+//	child->env_parent_id=curenv->env_id;
 	return child->env_id;
 	panic("sys_exofork not implemented");
 }
@@ -140,7 +140,7 @@ sys_env_set_status(envid_t envid, int status)
 	r=envid2env(envid,&new_env,1);
 	if(r<0)
 		{
-			cprintf("error in sys_env_set=%e for env_id=%d\n",status,envid);
+			cprintf("error in sys_env_set=%e for env_id=%x\n",status,envid);
 			return r;
 		}
 	else if((status!=ENV_RUNNABLE)&&(status!=ENV_NOT_RUNNABLE))
@@ -162,6 +162,19 @@ static int
 sys_env_set_pgfault_upcall(envid_t envid, void *func)
 {
 	// LAB 4: Your code here.
+	struct Env *new_env;
+	int status;
+	status=envid2env(envid,&new_env,1);
+//	cprintf("set upcall for envid=%x\n",envid);
+	if(status==-E_BAD_ENV)
+	{
+		cprintf("bad env in sys_env_set_pgfault error=%e envid=%x\n",status,envid);
+		return -E_BAD_ENV;
+	}
+	cprintf("page upcall\n");
+	new_env->env_pgfault_upcall=func;
+	return 0;
+
 	panic("sys_env_set_pgfault_upcall not implemented");
 }
 
@@ -196,8 +209,9 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	struct Env * new_env;
 	int r1,r2;
 	pte_t *pte_test_page;
+//	cprintf("entering page alloc\n");
 	r1=envid2env(envid,&new_env,1);
-	if(perm&~PTE_SYSCALL)
+	if(!(perm&(PTE_U|PTE_P)))
 	{
                 cprintf("error=-E_INVAL, perm not proper in sys_page_alloc for envid=%d\n",envid);
                         return -E_INVAL;
@@ -212,20 +226,14 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 		cprintf("error=%e in sys_page_alloc for envid=%d\n",r1,envid);
 		return r1;
 	}
-	
+//	cprintf("checking page alloc\n");
 	newpage=page_alloc(0);
 	if(!newpage)
 	{
                 cprintf("error=-E_NO_MEM in sys_page_alloc for envid=%d\n",envid);
                 return -E_NO_MEM;
         }
-	perm|=PTE_SYSCALL;
-	test_page=page_lookup(new_env->env_pml4e,va,&pte_test_page);
-	if(!(test_page==NULL))
-	{
-		page_remove(new_env->env_pml4e,va);
-		page_free(newpage);
-	}
+//	cprintf("page alloc 3\n");
 	r2=page_insert(new_env->env_pml4e,newpage,va,perm);
 	if(r2<0)
 	{
@@ -266,11 +274,11 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	struct Env *src_env,*dst_env;
 	int r1,r2;
 	// LAB 4: Your code here.
-/*	if(perm&~(PTE_SYSCALL&~PTE_W))
+	if(!(perm&(PTE_P|PTE_U)))
         {       
                 cprintf("error=-E_INVAL, perm not proper in sys_page_alloc for envid=%d\n",srcenvid);
                         return -E_INVAL;
-        }*/
+        }
 	if(((uint64_t)srcva>=UTOP)||((uint64_t)srcva%PGSIZE))
         {
                 cprintf("error=-E_INVAL, srcva not proper in sys_page_alloc for envid=%d\n",srcenvid);
@@ -308,11 +316,7 @@ sys_page_map(envid_t srcenvid, void *srcva,
                 return -E_INVAL;
 		}
 	}*/
-	if((!(perm & PTE_U)) && (!(perm & PTE_P)) && (perm & ~PTE_SYSCALL))
-	{
-		cprintf("\nInvalid perms\n");
-		return -E_INVAL;
-	}
+	
 	pte_t *pte_test_page;
 	struct PageInfo *newpage,*src_page,*test_page;
 	src_page=page_lookup(src_env->env_pml4e,srcva,&pte_test_page);
@@ -321,24 +325,11 @@ sys_page_map(envid_t srcenvid, void *srcva,
 		cprintf("error=no page mapped at srcva in sys_page_alloc for srcenvid=%d\n",srcenvid);
                 return -E_INVAL;
 	}
-	if(((perm & PTE_W) != 0) && ((*(pte_test_page) & PTE_W) == 0))
+	if(((perm & PTE_W)) && (!(*(pte_test_page) & PTE_W)))
 	{
 		cprintf("\nNo write permissions\n");
 		return -E_INVAL;
 	}
-	newpage=page_alloc(0);
-        if(!newpage)
-        {
-                cprintf("error=-E_NO_MEM in sys_page_alloc for envid=%d\n",srcenvid);
-                return -E_NO_MEM;
-        }
-	//page_free(newpage);
-        //perm|=PTE_AVAIL|PTE_P|PTE_U;
-        //test_page=page_lookup(dst_env->env_pml4e,dstva,&pte_test_page);
-        //if(!(test_page==NULL))
-        //{
-          //      page_remove(dst_env->env_pml4e,dstva);
-       // }
         r2=page_insert(dst_env->env_pml4e,src_page,dstva,perm);
         if(r2<0)
         {
@@ -456,8 +447,9 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 	// LAB 3: Your code here.
 
 //	panic("syscall not implemented");
-
+//	 cprintf("syscallno=%d\n",syscallno);
 	switch (syscallno) {
+//		cprintf("syscallno=%d\n",syscallno);
 	case SYS_cputs:
 		sys_cputs((char *)a1,a2);
 		return 0;
@@ -481,6 +473,10 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
                 return sys_page_unmap(a1,(void *)a2);
 	case SYS_page_map:
                 return sys_page_map(a1,(void *)a2,a3,(void *)a4,a5);
+	case SYS_env_set_pgfault_upcall:
+//		cprintf("syscall pgfault\n");
+		return sys_env_set_pgfault_upcall(a1,(void *)a2);
+		
 	default:
 		cprintf("\nSYS_error%d",syscallno);
 		return -E_NO_SYS;
