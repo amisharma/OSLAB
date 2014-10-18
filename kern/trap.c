@@ -72,35 +72,10 @@ trap_init(void)
 	extern struct Segdesc gdt[];
 	// LAB 3: Your code here.
 
-/*extern void t_divide(void);
-extern void t_dblflt(void);
-extern void t_tss(void);
-extern void t_segnp(void);
-void t_stack(void);
-void t_gpflt(void);
-extern void t_pgflt(void);
-void t_debug(void);
-void t_nmi(void);
-void t_brkpt(void);
-void t_oflow(void);
-void t_bound(void);
-void t_illop(void);
-void t_device(void);
-void t_align(void);
-void t_mchk(void);
-void t_simderr(void);
-void t_fperr(void);
-void t_syscall(void);
-void i_timer(void);
-void i_kbd(void);
-void i_serial(void);*/
 	SETGATE(idt[T_DIVIDE], 0, GD_KT, xt_divide, 0);
 	SETGATE(idt[T_DEBUG], 0, GD_KT, xt_debug,0);
-//	SETGATE(idt[T_BRKPT], 0, GD_KT, t_brkpt,3);
 	SETGATE(idt[T_DBLFLT], 0, GD_KT, xt_dblflt,0);
 	SETGATE(idt[T_SYSCALL], 0, GD_KT, xt_syscall, 3);
-//	SETGATE(idt[T_DIVIDE], 0, GD_KT, xt_divide, 0);
-//	SETGATE(idt[T_DEBUG], 0, GD_KT, xt_debug,0);
 	SETGATE(idt[T_NMI], 0, GD_KT, xt_nmi,0);
 	SETGATE(idt[T_BRKPT], 0, GD_KT, xt_brkpt,3);
 	SETGATE(idt[T_OFLOW], 0, GD_KT, xt_oflow,0);
@@ -116,11 +91,23 @@ void i_serial(void);*/
 	SETGATE(idt[T_ALIGN], 0, GD_KT, xt_align,0);
         SETGATE(idt[T_MCHK], 0, GD_KT, xt_mchk,0);
 	SETGATE(idt[T_SIMDERR], 0, GD_KT, xt_simderr,0);
-//	SETGATE(idt[T_SYSCALL], 0, GD_KT, t_syscall, 3);
-//	SETGATE(idt[IRQ_TIMER + IRQ_OFFSET], 0, GD_KT, xi_timer, 0);
-//	SETGATE(idt[IRQ_KBD + IRQ_OFFSET], 0, GD_KT, xi_kbd, 0);
-//	SETGATE(idt[IRQ_SERIAL + IRQ_OFFSET], 0, GD_KT, xi_serial, 0);
-    idt_pd.pd_lim = sizeof(idt)-1;
+   	SETGATE(idt[32], 0, GD_KT, xi_timer_0,0);
+	SETGATE(idt[33], 0, GD_KT, xi_timer_1,0)
+	SETGATE(idt[34], 0, GD_KT, xi_timer_2,0)
+         SETGATE(idt[35], 0, GD_KT, xi_timer_3,0)
+         SETGATE(idt[36], 0, GD_KT, xi_timer_4,0)
+         SETGATE(idt[37], 0, GD_KT, xi_timer_5,0)
+         SETGATE(idt[38], 0, GD_KT, xi_timer_6,0)
+         SETGATE(idt[39], 0, GD_KT, xi_timer_7,0)
+         SETGATE(idt[40], 0, GD_KT, xi_timer_8,0)
+         SETGATE(idt[41], 0, GD_KT, xi_timer_9,0)
+         SETGATE(idt[42], 0, GD_KT, xi_timer_10,0)
+         SETGATE(idt[43], 0, GD_KT, xi_timer_11,0)
+         SETGATE(idt[44], 0, GD_KT, xi_timer_12,0)
+         SETGATE(idt[45], 0, GD_KT, xi_timer_13,0)
+         SETGATE(idt[46], 0, GD_KT, xi_timer_14,0)
+         SETGATE(idt[47], 0, GD_KT, xi_timer_15,0)
+          idt_pd.pd_lim = sizeof(idt)-1;
     idt_pd.pd_base = (uint64_t)idt;
 	// Per-CPU setup
 	trap_init_percpu();
@@ -253,7 +240,7 @@ trap_dispatch(struct Trapframe *tf)
 	}
 	else if(tf->tf_trapno==T_BRKPT)
         {
-                cprintf("T_BRKPT");
+//                cprintf("T_BRKPT");
 		monitor(tf);
                 return;
         }
@@ -270,17 +257,8 @@ trap_dispatch(struct Trapframe *tf)
 		lapic_eoi();
 //		time_tick();
 		sched_yield();
-		return;
 	}
-/*	 if (tf->tf_trapno == IRQ_OFFSET + IRQ_KBD) {
-                kbd_intr();
-                sched_yield();
-        }
-        if (tf->tf_trapno == IRQ_OFFSET + IRQ_SERIAL) {
-                serial_intr();
-                sched_yield();
-        }
-*/	print_trapframe(tf);
+	print_trapframe(tf);
 	if (tf->tf_cs == GD_KT)
 		panic("unhandled trap in kernel");
 	else {

@@ -96,7 +96,7 @@ envid2env(envid_t envid, struct Env **env_store, bool checkperm)
 	e = &envs[ENVX(envid)];
 	if (e->env_status == ENV_FREE || e->env_id != envid) {
 		*env_store = 0;
-//		cprintf("error 1 in envid2env\n");
+		cprintf("error 1 in envid2env\n");
 		return -E_BAD_ENV;
 	}
 
@@ -107,7 +107,7 @@ envid2env(envid_t envid, struct Env **env_store, bool checkperm)
 	// or an immediate child of the current environment.
 	if (checkperm && e != curenv && e->env_parent_id != curenv->env_id) {
 		*env_store = 0;
-//		cprintf("error 2 in envid2env\n");
+		cprintf("error 2 in envid2env\n");
 		return -E_INVAL;
 	}
 
@@ -293,7 +293,7 @@ if (!(e = env_free_list))
 
 	// Enable interrupts while in user mode.
 	// LAB 4: Your code here.
-//	e->env_tf.tf_eflags=e->env_tf.tf_eflags|FL_IF;
+	e->env_tf.tf_eflags=e->env_tf.tf_eflags|FL_IF;
 	// Clear the page fault handler until user installs one.
 	e->env_pgfault_upcall = 0;
 
@@ -418,8 +418,7 @@ load_icode(struct Env *e, uint8_t *binary)
 	//lcr3(e->env_cr3);
 	prog_h=(struct Proghdr *)((uint8_t *)elf_h+elf_h->e_phoff);
 	env_prog_h=prog_h+elf_h->e_phnum;
-//	lcr3(e->env_cr3);	
-for(;prog_h<env_prog_h;prog_h++)
+	for(;prog_h<env_prog_h;prog_h++)
 	{
 		if(prog_h->p_type==ELF_PROG_LOAD)
 		{
@@ -452,13 +451,9 @@ for(;prog_h<env_prog_h;prog_h++)
         // at virtual address USTACKTOP - PGSIZE.
 	
 	//LAB 3: Your code here.
-	//region_alloc(e,(void *)USTACKTOP-PGSIZE,PGSIZE);
+	region_alloc(e,(void *)USTACKTOP-PGSIZE,PGSIZE);
 	e->env_tf.tf_rip=elf_h->e_entry;
-	region_alloc(e,(void *)(USTACKTOP-PGSIZE),PGSIZE);
-	//e->env_tf.tf_rsp=USTACKTOP;
 	//cprintf("success load_icode!!!");
-//	e->elf=binary;
-//	lcr3(boot_cr3);
 	return;
 }
 
@@ -481,7 +476,7 @@ env_create(uint8_t *binary, enum EnvType type)
 	
 	load_icode(env,binary);
 	        env->env_type=type;
-//	cprintf("success env_create\n");
+	cprintf("success env_create\n");
 }
 
 //

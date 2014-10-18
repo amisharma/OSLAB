@@ -115,6 +115,24 @@ void xt_fperr();
 void xt_align();
 void xt_mchk();
 void xt_simderr();
+
+void xi_timer_0();
+void xi_timer_1();
+void xi_timer_2();
+void xi_timer_3();
+void xi_timer_4();
+void xi_timer_5();
+void xi_timer_6();
+void xi_timer_7();
+void xi_timer_8();
+void xi_timer_9();
+void xi_timer_10();
+void xi_timer_11();
+void xi_timer_12();
+void xi_timer_13();
+void xi_timer_14();
+void xi_timer_15();
+
 #endif /* !__ASSEMBLER__ */
 
 #endif /* !JOS_INC_TRAP_H */

@@ -413,6 +413,50 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
+	struct Env* e;
+        int r;
+        struct PageInfo *pp;
+        pte_t *pte;
+
+        r = envid2env(envid, &e, 0);
+        if(r<0)
+        if (r == -E_BAD_ENV)
+                return -E_BAD_ENV;
+
+        if(e->env_ipc_recving==0)
+                return -E_IPC_NOT_RECV;
+
+        if((uint64_t )srcva < UTOP)
+        {
+                if((uint64_t)srcva % PGSIZE != 0)
+                        return -E_INVAL;
+
+                if (!(perm & (PTE_U|PTE_P)))
+                return -E_INVAL;
+
+                pp = page_lookup(curenv->env_pml4e, srcva, &pte);
+                if (pp == NULL)
+                        return -E_INVAL;
+
+                if( (perm & PTE_W) && !(*pte & PTE_W) )
+                        return -E_INVAL;
+
+                if ((uint64_t )e->env_ipc_dstva < UTOP)
+                {
+                        r = page_insert(e->env_pml4e, pp, e->env_ipc_dstva, perm);
+                        if(r == -E_NO_MEM)
+                        {
+                                page_free(pp);
+                                return r;
+                        }
+                        e->env_ipc_perm = perm;
+                }
+        }
+        e->env_ipc_recving = 0;
+        e->env_ipc_from = curenv->env_id;
+        e->env_ipc_value = value;
+        e->env_status = ENV_RUNNABLE;
+	return 0;
 	panic("sys_ipc_try_send not implemented");
 }
 
@@ -431,7 +475,14 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+	if(((uint64_t)dstva<UTOP) &&(((uint64_t)dstva&PGSIZE)!=0))
+		return -E_INVAL;
+	curenv->env_ipc_recving=1;
+	curenv->env_ipc_dstva=dstva;
+	curenv->env_status=ENV_NOT_RUNNABLE;
+	curenv->env_tf.tf_regs.reg_rax=0;
+	sched_yield();
+//	panic("sys_ipc_recv not implemented");
 	return 0;
 }
 
@@ -476,7 +527,10 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 	case SYS_env_set_pgfault_upcall:
 //		cprintf("syscall pgfault\n");
 		return sys_env_set_pgfault_upcall(a1,(void *)a2);
-		
+	case SYS_ipc_try_send:
+		return sys_ipc_try_send(a1,a2,(void *)a3,a4);
+	case SYS_ipc_recv:
+		return sys_ipc_recv((void *)a1);		
 	default:
 		cprintf("\nSYS_error%d",syscallno);
 		return -E_NO_SYS;
