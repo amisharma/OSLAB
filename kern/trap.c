@@ -348,7 +348,7 @@ page_fault_handler(struct Trapframe *tf)
 	fault_va = rcr2();
 
 	// Handle kernel-mode page faults.
-//	cprintf("entering page fault\n");
+	cprintf("entering page fault\n");
 	// LAB 3: Your code here.
 	if((tf->tf_cs & 3) == 0)
 	{
@@ -393,8 +393,11 @@ page_fault_handler(struct Trapframe *tf)
         
 	int perm=PTE_P|PTE_U|PTE_W;
 	 if((tf->tf_rsp>=UXSTACKTOP-PGSIZE)&&(tf->tf_rsp<=UXSTACKTOP-1))
+	{
+		cprintf("case 1\n");
                 new_utrap=(struct UTrapframe *)(tf->tf_rsp-sizeof(struct UTrapframe)-8);
-        else
+        }
+	else
                 new_utrap=(struct UTrapframe *)(UXSTACKTOP-sizeof(struct UTrapframe));
 		
 	// Destroy the environment that caused the fault.
@@ -402,7 +405,7 @@ page_fault_handler(struct Trapframe *tf)
 	user_mem_assert(curenv,(void *)new_utrap,sizeof(struct UTrapframe),perm);
 	//memmove((void *)recurs,(void *)&new_utrap,sizeof(new_utrap));
 //	cprintf("user mem ok");
-	        new_utrap->utf_fault_va=fault_va;
+	new_utrap->utf_fault_va=fault_va;
         new_utrap->utf_err=tf->tf_err;
         new_utrap->utf_regs=tf->tf_regs;
         new_utrap->utf_rip=tf->tf_rip;

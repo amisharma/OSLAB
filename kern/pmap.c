@@ -869,7 +869,7 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 		if((!p)||(!( *p & perm)))
 		{
 			user_mem_check_addr=(uintptr_t)va>va_s?(uintptr_t)va:(uintptr_t)va_s;
-			if(!p)
+		//	if(!p)
 		//	cprintf("errot in permission");
 			return -E_FAULT;
 		}
