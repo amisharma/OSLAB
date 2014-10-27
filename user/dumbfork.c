@@ -26,7 +26,7 @@ void
 duppage(envid_t dstenv, void *addr)
 {
 	int r;
-
+//	cprintf("entering duppapge\n");
 	// This is NOT what you should do in your fork.
 	if ((r = sys_page_alloc(dstenv, addr, PTE_P|PTE_U|PTE_W)) < 0)
 		panic("sys_page_alloc: %e", r);
@@ -51,6 +51,7 @@ dumbfork(void)
 	// except that in the child, this "fake" call to sys_exofork()
 	// will return 0 instead of the envid of the child.
 	envid = sys_exofork();
+//	cprintf("envid =%x",envid);
 	if (envid < 0)
 		panic("sys_exofork: %e", envid);
 	if (envid == 0) {
@@ -58,6 +59,7 @@ dumbfork(void)
 		// The copied value of the global variable 'thisenv'
 		// is no longer valid (it refers to the parent!).
 		// Fix it and return 0.
+//		cprintf("child\n");
 		thisenv = &envs[ENVX(sys_getenvid())];
 		return 0;
 	}

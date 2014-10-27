@@ -256,6 +256,13 @@ read_rsp(void)
         return esp;
 }
 
+static __inline uint64_t 
+read_rip(void)
+{ 	uint64_t rip;
+	 __asm __volatile("leaq (%%rip),%0" : "=r" (rip)::"cc","memory");
+	return rip;
+}
+
 static __inline void
 cpuid(uint32_t info, uint32_t *eaxp, uint32_t *ebxp, uint32_t *ecxp, uint32_t *edxp)
 {

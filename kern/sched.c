@@ -29,7 +29,27 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
-
+//	cprintf("entering sched_yield \n");
+	int i,flag=0,cur_env_id=0;
+	if(thiscpu->cpu_env)
+		cur_env_id = ENVX(thiscpu->cpu_env->env_id);
+	for(i =0; i <NENV; i++)
+	{
+		cur_env_id=(cur_env_id+1)%NENV;
+		if((envs[cur_env_id].env_status==ENV_RUNNABLE))
+		{
+//			cprintf("sched env %d   ",i);
+			env_run(&envs[cur_env_id]);
+			flag=1;
+		}	
+	}
+//	cprintf("sched_yield\n");
+	if(thiscpu->cpu_env&&(thiscpu->cpu_env->env_status==ENV_RUNNING))
+	{
+//			cprintf("sched_yield cpu\n");
+			env_run(thiscpu->cpu_env);
+	}
+//	cprintf("\nexiting sched_yield\n");
 	// sched_halt never returns
 	sched_halt();
 }
@@ -58,16 +78,20 @@ sched_halt(void)
 
 	// Mark that no environment is running on this CPU
 	curenv = NULL;
+//	cprintf("sched_hault lcr3\n");
 	lcr3(PADDR(boot_pml4e));
+//	        cprintf("sched_hault lcr3");
 
 	// Mark that this CPU is in the HALT state, so that when
 	// timer interupts come in, we know we should re-acquire the
 	// big kernel lock
-	xchg(&thiscpu->cpu_status, CPU_HALTED);
+  //     cprintf("sched_hault xchg\n");
 
+	xchg(&thiscpu->cpu_status, CPU_HALTED);
+//	cprintf("sched_hault xchg\n");
 	// Release the big kernel lock as if we were "leaving" the kernel
 	unlock_kernel();
-
+//	cprintf("sched_unlock\n");
 	// Reset stack pointer, enable interrupts and then halt.
 	asm volatile (
 		"movq $0, %%rbp\n"
