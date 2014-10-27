@@ -66,7 +66,40 @@ static int
 file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool alloc)
 {
         // LAB 5: Your code here.
-        panic("file_block_walk not implemented");
+     if(!ppdiskbno)
+	return -E_INVAL;
+	struct File * new_file,*new_dir;
+	void *blk_addr;
+	uint32_t *blk_no;
+	if(filebno>=NDIRECT+NINDIRECT)
+	{
+		cprintf("invalid block no in file_block_walk \n");
+		return -E_INVAL;
+	}
+	if(filebno<10)
+	{
+		*ppdiskbno=&(f->f_direct[filebno]);
+		return 0;
+	}
+	else
+	{
+		filebno-=10;
+		if(f->f_indirect)
+		{
+			*ppdiskbno=((uint32_t *)diskaddr((uint64_t)f->f_indirect))+filebno;
+			return 0;
+		}
+		else
+		{
+			if(!alloc)
+			{
+				cprintf("alloc 0 and block not found in file_block_walk\n");
+				return -E_NOT_FOUND;
+			}
+		}
+				
+	}
+	   panic("file_block_walk not implemented");
 }
 
 // Set *blk to the address in memory where the filebno'th
@@ -80,6 +113,21 @@ int
 file_get_block(struct File *f, uint32_t filebno, char **blk)
 {
 	// LAB 5: Your code here.
+	if(!f||!blk)
+	{
+		cprintf("invalid file or blk pointer\n");
+		return -E_INVAL;
+	}
+	int i;
+	uint32_t * blkno;
+	i=file_block_walk(f,filebno,&blkno,0);
+	if(i<0)
+	{
+		cprintf("error during file_block_walk in file_get_block\n");
+		return i;
+	}
+	*blk=(char *)diskaddr(*blkno);
+	return 0;	
 	panic("file_block_walk not implemented");
 }
 
