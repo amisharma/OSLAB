@@ -62,9 +62,9 @@ sys_env_destroy(envid_t envid)
 		cprintf("[%08x] exiting gracefully\n", curenv->env_id);
 	else
 		cprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
-	 cprintf("entering env_destroy[%08x]\n",envid);
+	 //cprintf("entering env_destroy[%08x]\n",envid);
 	env_destroy(e);
-	cprintf("exiting sys_env_destroy[%08x]\n",envid);
+	//cprintf("exiting sys_env_destroy[%08x]\n",envid);
 	return 0;
 }
 
@@ -165,13 +165,13 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func)
 	struct Env *new_env;
 	int status;
 	status=envid2env(envid,&new_env,1);
-//	cprintf("set upcall for envid=%x\n",envid);
+	cprintf("set upcall for envid=%x\n",envid);
 	if(status==-E_BAD_ENV)
 	{
 		cprintf("bad env in sys_env_set_pgfault error=%e envid=%x\n",status,envid);
 		return -E_BAD_ENV;
 	}
-//	cprintf("page upcall\n");
+	cprintf("page upcall\n");
 	new_env->env_pgfault_upcall=func;
 	return 0;
 
@@ -417,20 +417,20 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
         int r;
         struct PageInfo *pp;
         pte_t *pte;
-
+	cprintf("entering sys_ipc_try_send\n");
         r = envid2env(envid, &e, 0);
         if(r<0)
-        if (r == -E_BAD_ENV)
                 return -E_BAD_ENV;
-
+	cprintf("entering 2 sys_ipc_try_send\n");
         if(e->env_ipc_recving==0)
                 return -E_IPC_NOT_RECV;
-
+	cprintf("entering 3 sys_ipc_try_send\n");
         if((uint64_t )srcva < UTOP)
         {
                 if((uint64_t)srcva % PGSIZE != 0)
                         return -E_INVAL;
-
+		if((uint64_t)srcva>=UTOP)
+			return -E_INVAL;
                 if (!(perm & (PTE_U|PTE_P)))
                 return -E_INVAL;
 
@@ -440,11 +440,14 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 
                 if( (perm & PTE_W) && !(*pte & PTE_W) )
                         return -E_INVAL;
-
+		if(((uint64_t)e->env_ipc_dstva >= UTOP) || (((uint64_t)e->env_ipc_dstva % PGSIZE) != 0))
+		return -E_INVAL;
                 if ((uint64_t )e->env_ipc_dstva < UTOP)
                 {
                         r = page_insert(e->env_pml4e, pp, e->env_ipc_dstva, perm);
-                        if(r == -E_NO_MEM)
+                	//r=sys_page_map(curenv->env_id,srcva,e->env_id,e->env_ipc_dstva,perm);        
+		cprintf("entering 4 sys_ipc_try_send\n");
+		if(r)
                         {
                                 page_free(pp);
                                 return r;
@@ -456,6 +459,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
         e->env_ipc_from = curenv->env_id;
         e->env_ipc_value = value;
         e->env_status = ENV_RUNNABLE;
+	cprintf("entering 5 sys_ipc_try_send\n");
 	return 0;
 	panic("sys_ipc_try_send not implemented");
 }
@@ -475,13 +479,21 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	if(((uint64_t)dstva<UTOP) &&(((uint64_t)dstva&PGSIZE)!=0))
-		return -E_INVAL;
+	cprintf("entering sys_ipc_recv\n");
+	if((dstva<(void *)UTOP))
+	{
+		if((((uint64_t)dstva)%PGSIZE)!=0)
+		{cprintf("sys_ipc_recv error dstva= %x,utop=%x\n",dstva,UTOP);
+		return -E_INVAL;}
+//		curenv->env_ipc_dstva = dstva;
+//		curenv->env_ipc_perm = 0;
+	}
+	cprintf("entering 2 sys_ipc_recv\n");
 	curenv->env_ipc_recving=1;
 	curenv->env_ipc_dstva=dstva;
 	curenv->env_status=ENV_NOT_RUNNABLE;
-	curenv->env_tf.tf_regs.reg_rax=0;
-	sched_yield();
+//	curenv->env_tf.tf_regs.reg_rax=0;
+//	sched_yield();
 //	panic("sys_ipc_recv not implemented");
 	return 0;
 }

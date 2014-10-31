@@ -90,9 +90,20 @@ openfile_lookup(envid_t envid, uint32_t fileid, struct OpenFile **po)
 	struct OpenFile *o;
 
 	o = &opentab[fileid % MAXOPEN];
-	if (pageref(o->o_fd) == 1 || o->o_fileid != fileid)
+	cprintf("openfile_lookup\n");
+	if ((pageref(o->o_fd) == 1))
+	{
+		cprintf("openfile_lookup 2\n");
 		return -E_INVAL;
+	}
+	if(o->o_fileid != fileid)
+	{
+		cprintf("openfile_lookup 3\n");
+		return -E_INVAL;
+	}
+	cprintf("openfile_lookup 4\n");
 	*po = o;
+	cprintf("exiting openfile_lookup\n");
 	return 0;
 }
 
@@ -177,6 +188,37 @@ serve_read(envid_t envid, union Fsipc *ipc)
 	// so filling in ret will overwrite req.
 	//
 	// LAB 5: Your code here
+	cprintf("entering serv_read\n");
+	size_t num_r=req->req_n;
+	if(req->req_n >PGSIZE)
+		num_r=PGSIZE;
+	cprintf("entering 2 serv_read\n");
+//	int file_id=req->req_fileid;
+	struct OpenFile *op_file;
+	cprintf("testing serv_read\n");
+	int look_up=openfile_lookup(envid,req->req_fileid,&op_file);
+	cprintf("entering 3 serv_read\n");
+	if(look_up<0)
+	{
+		cprintf("exiting 1 serv_read\n");
+		return look_up;
+	}
+	cprintf("entering 4 serv_read\n");
+	if(op_file==NULL||op_file->o_fd==NULL)
+	{
+		cprintf("exiting 2 serv_read\n");
+		return -E_INVAL;
+	}
+	cprintf("entering 5 serv_read\n");
+	int num_r_char=file_read(op_file->o_file,(void *)ret->ret_buf,num_r,op_file->o_fd->fd_offset);
+	if(num_r_char<0)
+	{
+		cprintf("exiting 3 serv_read\n");
+		return num_r_char;
+	}
+	op_file->o_fd->fd_offset+=num_r_char;
+	 cprintf("exiting 4 serv_read\n");
+	return num_r_char;	
 	panic("serve_read not implemented");
 }
 
@@ -229,10 +271,12 @@ serve(void)
 	uint32_t req, whom;
 	int perm, r;
 	void *pg;
-
+	cprintf("entering serve\n");
 	while (1) {
 		perm = 0;
 		req = ipc_recv((int32_t *) &whom, fsreq, &perm);
+        cprintf("entering serve after ipc_recv\n");
+
 		if (debug)
 			cprintf("fs req %d from %08x [page %08x: %s]\n",
 				req, whom, uvpt[PGNUM(fsreq)], fsreq);
@@ -246,13 +290,17 @@ serve(void)
 
 		pg = NULL;
 		if (req == FSREQ_OPEN) {
+		        cprintf("entering serve req==open\n");
+
 			r = serve_open(whom, (struct Fsreq_open*)fsreq, &pg, &perm);
 		} else if (req < NHANDLERS && handlers[req]) {
+			cprintf("entering 2 serve\n");
 			r = handlers[req](whom, fsreq);
 		} else {
 			cprintf("Invalid request code %d from %08x\n", req, whom);
 			r = -E_INVAL;
 		}
+		cprintf("entering 3 serve\n");
 		ipc_send(whom, r, pg, perm);
 		sys_page_unmap(0, fsreq);
 	}
@@ -272,6 +320,8 @@ umain(int argc, char **argv)
 	serve_init();
 	fs_init();
 	fs_test();
+	cprintf("calling serve\n");
 	serve();
+	cprintf("exiting serve\n");
 }
 

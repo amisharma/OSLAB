@@ -14,7 +14,7 @@ fs_test(void)
 	char *blk;
 	uint32_t *bits;
 
-
+	cprintf("entering fs_test\n");
 	if ((r = file_open("/not-found", &f)) < 0 && r != -E_NOT_FOUND)
 		panic("file_open /not-found: %e", r);
 	else if (r == 0)
