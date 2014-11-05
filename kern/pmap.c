@@ -258,6 +258,7 @@ x64_vm_init(void)
 	// array.  'npages' is the number of physical pages in memory.
 	// Your code goes here:
 	pages= (struct PageInfo *) boot_alloc(npages*sizeof(struct PageInfo ));
+	cprintf("pages base address %p %p %x\n", pages, &pages[npages-1], npages);
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
@@ -293,7 +294,7 @@ x64_vm_init(void)
 	boot_map_region(boot_pml4e, UENVS, n, PADDR(envs),PTE_U| PTE_P);
 //=======
 	n= ROUNDUP(npages * sizeof(struct PageInfo), PGSIZE);
-	boot_map_region(boot_pml4e, UPAGES, n, PADDR(pages),PTE_P);
+	boot_map_region(boot_pml4e, UPAGES, n, PADDR(pages),PTE_P | PTE_U);
 //>>>>>>> lab2
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -416,10 +417,13 @@ page_init(void)
 	for (i = 1; i < npages; i++) {
 		pages[i].pp_ref = 0;
 		pages[i].pp_link=NULL;
-		if(((page2pa(pages+i))>=IOPHYSMEM) && ((page2pa(pages+i))<PADDR(boot_alloc(0))))
+		if(((page2pa(pages+i))>=IOPHYSMEM) && ((page2pa(pages+i))<PADDR(boot_alloc(0)))){
+			pages[i].pp_ref=1;
 			continue;
+		}
         if(((page2pa(pages+i))==MPENTRY_PADDR))
 		{//cprintf("test_MPENTRY_PADDR\n");	
+		pages[i].pp_ref=1;
 		continue;
 		}
 	if(last)
@@ -428,6 +432,7 @@ page_init(void)
             page_free_list = &pages[i];
 		last = &pages[i];
 	}
+	pages[0].pp_link=NULL;
 }
 
 //
@@ -448,18 +453,22 @@ page_alloc(int alloc_flags)
 	// Fill this function in
 	size_t i;
 	struct PageInfo *new_page=page_free_list;
-	if(alloc_flags |ALLOC_ZERO)
-	{
+	
+	
 		if(page_free_list)
 		{
-			memset(page2kva(new_page),0,PGSIZE);
 			page_free_list=page_free_list->pp_link;
 			new_page->pp_link=NULL;
+			if(alloc_flags &&ALLOC_ZERO)
+				memset(page2kva(new_page),'\0',PGSIZE);
+			else
+				memset(page2kva(new_page),0,PGSIZE);
 			return new_page;
 		}
 		else
 			return NULL;	
-	}
+	
+	cprintf("exiting page_alloc");
 	return 0;
 }
 
@@ -484,6 +493,7 @@ page_free(struct PageInfo *pp)
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
 	struct PageInfo * temp_free_list = page_free_list;
+//	cprintf("enterting page_free \n");
 	if(!(pp->pp_ref))
 	{	
 		if(!page_free_list)
@@ -696,6 +706,8 @@ page_insert(pml4e_t *pml4e, struct PageInfo *pp, void *va, int perm)
 	pte_t *pte;
 	perm=perm|PTE_P;
 	//pp->pp_ref++;
+	if((page_lookup(pml4e,(char *)va,&pte)!=NULL))
+		page_remove(pml4e,va);
 	pte = pml4e_walk(pml4e, va, 1);
 	if(pte==NULL)
 	{
@@ -704,15 +716,18 @@ page_insert(pml4e_t *pml4e, struct PageInfo *pp, void *va, int perm)
 	}
 	else
 	{
-		if(*pte & PTE_P)
-		{
-				page_remove(pml4e, va);
-				tlb_invalidate(pml4e, va);
+//		if(*pte & PTE_P)
+//		{
+//				page_remove(pml4e, va);
+//				tlb_invalidate(pml4e, va);
 			
-		}
-	pp->pp_ref++;
+//		}
+	//pp->pp_ref++;
 	*pte = PTE_ADDR(page2pa(pp))|perm;
-	
+//	cprintf("exiting page_insert PPN(pte)=%08x, pte=%08x va=%08x, pml4e=%08x, pages %p\n",PPN(*pte),*pte,va,pml4e, pages);
+	pp=pa2page(PTE_ADDR(*pte));
+	pp->pp_ref++;	
+	struct PageInfo test_page =	pages[PPN(*pte)];
 	return 0;
 	}
 }
@@ -759,13 +774,14 @@ void
 page_remove(pml4e_t *pml4e, void *va)
 {
 	// Fill this function in
+//	cprintf("entering page remove va=%08x\n",va);
 	pte_t *pte;
 	struct PageInfo *page_var;
 	page_var = page_lookup(pml4e, va, &pte);
 	if(!page_var)
 		return;
-	*pte=0;
-	tlb_invalidate(pml4e, va);
+	if(pte){*pte=0;
+	tlb_invalidate(pml4e, va);}
 	page_decref(page_var);
 }
 

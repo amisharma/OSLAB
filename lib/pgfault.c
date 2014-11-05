@@ -31,14 +31,14 @@ set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
 		// LAB 4: Your code here.
 		void *offset=(void *)(UXSTACKTOP-PGSIZE);
 //		envid_t envid=sys_getenvid();
-		cprintf("set_pgfault_handler\n");
+//		cprintf("set_pgfault_handler\n");
 		r=sys_page_alloc(0,(void *)(UXSTACKTOP-PGSIZE),PTE_P|PTE_U|PTE_W);
-		cprintf("page alloc successfull\n");
+//		cprintf("page alloc successfull\n");
 		if(r<0)
 		{
 			panic("not enough memory to allocate page");
 		}
-		cprintf("setting page upcall\n");
+//		cprintf("setting page upcall\n");
 		sys_env_set_pgfault_upcall(0,_pgfault_upcall);
 		//panic("set_pgfault_handler not implemented");
 	}

@@ -71,14 +71,14 @@ open(const char *path, int mode)
 	if(strlen(path)>=MAXPATHLEN)
 		return -E_BAD_PATH;
 	int r,del;
-	cprintf("entering open \n");
+//	cprintf("entering open \n");
 	r=fd_alloc(&new_file);
 	if(r<0)
 	{
-		cprintf("erro while fs_alloc in open\n");
+		cprintf("error while fs_alloc in open\n");
 		return r;
 	}
-	cprintf("entering 2 open \n");
+//	cprintf("entering 2 open \n");
 	if(new_file==NULL)
 	{
 		cprintf("new file is NULL\n");
@@ -88,9 +88,9 @@ open(const char *path, int mode)
 	fsipcbuf.open.req_omode=mode;
 	fsipcbuf.open.req_path[strlen(path)] = '\0';
 
-	cprintf("entering 3 open \n");
+//	cprintf("entering 3 open \n");
 	r=fsipc(FSREQ_OPEN,(void *)new_file);
-	cprintf("entering 4 open \n");
+//	cprintf("entering 4 open \n");
 	if(r<0)
 	{
 		del=fd_close(new_file,0);
@@ -102,7 +102,7 @@ open(const char *path, int mode)
 		cprintf("error while fsipc open in open \n");
 		return r;
 	}
-	cprintf("entering 5 open \n");
+//	cprintf("entering 5 open \n");
 	return fd2num(new_file);
 
 	panic ("open not implemented");
@@ -136,7 +136,7 @@ devfile_read(struct Fd *fd, void *buf, size_t n)
 	// bytes read will be written back to fsipcbuf by the file
 	// system server.
 	// LAB 5: Your code here
-	cprintf("entering file_read\n");
+//	cprintf("entering file_read\n");
 	if(!fd ||!buf)
 	{
 		cprintf("exiting 1 file_read\n");
@@ -145,16 +145,16 @@ devfile_read(struct Fd *fd, void *buf, size_t n)
 	int file_id=fd->fd_file.id;
 	fsipcbuf.read.req_fileid=fd->fd_file.id;
 	fsipcbuf.read.req_n=n;
-	cprintf("entering 2  file_read\n");
+//	cprintf("entering 2  file_read\n");
 	ssize_t num_r =fsipc(FSREQ_READ,NULL);
-	cprintf("entering 3 file_read\n");
+//	cprintf("entering 3 file_read\n");
 	if(num_r<0)
 	{                
 		cprintf("exiting 2 file_read\n");
 		return num_r;
 	}
 	memmove(buf,(void *)&fsipcbuf.readRet.ret_buf,num_r);
-                cprintf("exiting 3 file_read\n");
+  //              cprintf("exiting 3 file_read\n");
 
 	return num_r;
 	panic("devfile_read not implemented");

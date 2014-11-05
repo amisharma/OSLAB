@@ -66,7 +66,7 @@ static int
 file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool alloc)
 {
         // LAB 5: Your code here.
-	cprintf("entering file_block_walk\n");
+//	cprintf("entering file_block_walk\n");
      if(!ppdiskbno)
 	return -E_INVAL;
 	struct File * new_file,*new_dir;
@@ -87,7 +87,7 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 		filebno-=10;
 		if(f->f_indirect)
 		{
-			*ppdiskbno=((uint32_t *)diskaddr((uint64_t)f->f_indirect))+filebno;
+			*ppdiskbno=((uint32_t *)diskaddr((uint64_t)f->f_indirect))+filebno; //CHECK
 			return 0;
 		}
 		else
@@ -100,7 +100,7 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 		}
 				
 	}
-	cprintf("exiting file_block_walk\n");
+//	cprintf("exiting file_block_walk\n");
 	   panic("file_block_walk not implemented");
 }
 
@@ -115,7 +115,7 @@ int
 file_get_block(struct File *f, uint32_t filebno, char **blk)
 {
 	// LAB 5: Your code here.
-	cprintf("entering file_get_block\n");
+//	cprintf("entering file_get_block\n");
 	if(!f||!blk)
 	{
 		cprintf("invalid file or blk pointer\n");
@@ -130,7 +130,7 @@ file_get_block(struct File *f, uint32_t filebno, char **blk)
 		return i;
 	}
 	*blk=(char *)diskaddr(*blkno);
-	cprintf("exiting file_get_block\n");
+//	cprintf("exiting file_get_block\n");
 	return 0;	
 	panic("file_block_walk not implemented");
 }
@@ -146,7 +146,7 @@ dir_lookup(struct File *dir, const char *name, struct File **file)
 	uint32_t i, j, nblock;
 	char *blk;
 	struct File *f;
-	cprintf("entering dir lookup\n");
+//	cprintf("entering dir lookup\n");
 	// Search dir for name.
 	// We maintain the invariant that the size of a directory-file
 	// is always a multiple of the file system's block size.
@@ -162,7 +162,7 @@ dir_lookup(struct File *dir, const char *name, struct File **file)
 				return 0;
 			}
 	}
-	cprintf("exiting dir_lookup\n");
+//	cprintf("exiting dir_lookup\n");
 	return -E_NOT_FOUND;
 }
 
@@ -189,7 +189,7 @@ walk_path(const char *path, struct File **pdir, struct File **pf, char *lastelem
 	char name[MAXNAMELEN];
 	struct File *dir, *f;
 	int r;
-	cprintf("entering walk path\n");
+//	cprintf("entering walk path\n");
 	 if (*path != '/')
 		return -E_BAD_PATH;
 	path = skip_slash(path);
@@ -201,7 +201,7 @@ walk_path(const char *path, struct File **pdir, struct File **pf, char *lastelem
 		*pdir = 0;
 	*pf = 0;
 	while (*path != '\0') {
-		cprintf("entering 2 walk path\n");
+//		cprintf("entering 2 walk path\n");
 		dir = f;
 		p = path;
 		while (*path != '/' && *path != '\0')
@@ -225,7 +225,7 @@ walk_path(const char *path, struct File **pdir, struct File **pf, char *lastelem
 					strcpy(lastelem, name);
 				*pf = 0;
 			}
-			cprintf("error 2 \n");
+//			cprintf("error 2 \n");
 			return r;
 		}
 	}

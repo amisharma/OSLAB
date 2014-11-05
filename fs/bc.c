@@ -18,7 +18,7 @@ bc_pgfault(struct UTrapframe *utf)
 	void *addr = (void *) utf->utf_fault_va;
 	uint64_t blockno = ((uint64_t)addr - DISKMAP) / BLKSIZE;
 	int r;
-        cprintf("entering bc_page_fault\n");
+//        cprintf("entering bc_page_fault\n");
 
 	// Check that the fault was within the block cache region
 	if (addr < (void*)DISKMAP || addr >= (void*)(DISKMAP + DISKSIZE))
@@ -34,9 +34,9 @@ bc_pgfault(struct UTrapframe *utf)
 	// Hint: first round addr to page boundary.
 	//
 	// LAB 5: you code here:
-	cprintf("entering 2 page_fault\n");
+//	cprintf("entering 2 page_fault\n");
 	struct PageInfo * new_page;
-	addr=(void *)ROUNDDOWN(addr,BLKSIZE);
+	addr=(void *)ROUNDDOWN(addr,PGSIZE);
 	r=sys_page_alloc(0,addr,PTE_U|PTE_P|PTE_W);
 	if(r<0)
 	{
