@@ -64,7 +64,7 @@ duppage(envid_t envid, unsigned pn)
 	int r;
 
 	// LAB 4: Your code here.
-//	cprintf("entering duppage \n");	
+//	cprintf("entering duppage child envid=%08x pn=%08x \n",envid,pn);	
 uintptr_t addr;
 	addr=(uintptr_t)(pn<<PGSHIFT);
 	pte_t entry=uvpt[pn];

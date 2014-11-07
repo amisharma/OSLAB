@@ -223,7 +223,7 @@ ssize_t
 readn(int fdnum, void *buf, size_t n)
 {
 	int m, tot;
-cprintf("entering readn\n");
+//cprintf("entering readn\n");
 	for (tot = 0; tot < n; tot += m) {
 		m = read(fdnum, (char*)buf + tot, n - tot);
 		if (m < 0)
@@ -231,7 +231,7 @@ cprintf("entering readn\n");
 		if (m == 0)
 			break;
 	}
-cprintf("exiting readn\n");
+//cprintf("exiting readn\n");
 	return tot;
 }
 
