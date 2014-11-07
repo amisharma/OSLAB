@@ -190,8 +190,8 @@ walk_path(const char *path, struct File **pdir, struct File **pf, char *lastelem
 	struct File *dir, *f;
 	int r;
 //	cprintf("entering walk path\n");
-	 if (*path != '/')
-		return -E_BAD_PATH;
+//	if (*path != '/')
+//		return -E_BAD_PATH;
 	path = skip_slash(path);
 	f = &super->s_root;
 	dir = 0;

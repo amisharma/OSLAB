@@ -191,13 +191,13 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func)
 	struct Env *new_env;
 	int status;
 	status=envid2env(envid,&new_env,1);
-	cprintf("set upcall for envid=%x\n",envid);
+//	cprintf("set upcall for envid=%x\n",envid);
 	if(status==-E_BAD_ENV)
 	{
 		cprintf("bad env in sys_env_set_pgfault error=%e envid=%x\n",status,envid);
 		return -E_BAD_ENV;
 	}
-	cprintf("page upcall\n");
+//	cprintf("page upcall\n");
 	new_env->env_pgfault_upcall=func;
 	return 0;
 

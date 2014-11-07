@@ -275,11 +275,11 @@ serve(void)
 	uint32_t req, whom;
 	int perm, r;
 	void *pg;
-	cprintf("entering serve\n");
+//	cprintf("entering serve\n");
 	while (1) {
 		perm = 0;
 		req = ipc_recv((int32_t *) &whom, fsreq, &perm);
-        cprintf("entering serve after ipc_recv\n");
+  //      cprintf("entering serve after ipc_recv\n");
 
 		if (debug)
 			cprintf("fs req %d from %08x [page %08x: %s]\n",
@@ -294,22 +294,22 @@ serve(void)
 
 		pg = NULL;
 		if (req == FSREQ_OPEN) {
-		        cprintf("entering serve req==open\n");
+//		        cprintf("entering serve req==open\n");
 
 			r = serve_open(whom, (struct Fsreq_open*)fsreq, &pg, &perm);
 		} else if (req < NHANDLERS && handlers[req]) {
-			cprintf("entering 2 serve\n");
+//			cprintf("entering 2 serve\n");
 			r = handlers[req](whom, fsreq);
 		} else {
 			cprintf("Invalid request code %d from %08x\n", req, whom);
 			r = -E_INVAL;
 		}
-		cprintf("entering 3 serve\n");
+//		cprintf("entering 3 serve\n");
 		ipc_send(whom, r, pg, perm);
-	cprintf("entering 4 serve\n");
+//	cprintf("entering 4 serve\n");
 
 		sys_page_unmap(0, fsreq);
-cprintf("entering 5 serve\n");
+//cprintf("entering 5 serve\n");
 
 	}
 }
