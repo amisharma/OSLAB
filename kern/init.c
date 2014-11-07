@@ -86,8 +86,8 @@ i386_init(void)
 
 	 //cprintf("creating user_yield\n");	
 	ENV_CREATE(user_yield, ENV_TYPE_USER); 
-	ENV_CREATE(user_yield, ENV_TYPE_USER);
-//	ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
+	ENV_CREATE(user_spawnhello, ENV_TYPE_USER);
+	ENV_CREATE(user_hello, ENV_TYPE_USER);
 	  // ENV_CREATE(user_faultalloc, ENV_TYPE_USER);
 //>>>>>>> lab4
 #endif // TEST*

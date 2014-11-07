@@ -26,7 +26,7 @@ pgfault(struct UTrapframe *utf)
 
 	// LAB 4: Your code here.
 	if(!(err&FEC_WR))
-		panic("page fault not on write access");
+		panic("page fault not on write access %08x %e",(uint64_t)addr,err);
 	else if	(!(uvpt[VPN(addr)]&PTE_COW))
 		panic("page fault not on copy on write ");
 	// Allocate a new page, map it at a temporary location (PFTEMP),
@@ -64,11 +64,18 @@ duppage(envid_t envid, unsigned pn)
 	int r;
 
 	// LAB 4: Your code here.
-	uintptr_t addr;
+	cprintf("entering duppage \n");	
+uintptr_t addr;
 	addr=(uintptr_t)(pn<<PGSHIFT);
 	pte_t entry=uvpt[pn];
 	int cow_perm=entry&PTE_SYSCALL;
 	pte_t pte=uvpt[pn];
+	if(pte&PTE_SHARE)
+	{
+		r=sys_page_map(0,(void*)addr,envid,(void *)addr,cow_perm|PTE_SHARE);
+		if(r<0)
+			panic("error in duppage while sys_page_map share");
+	}
 	if(!((pte&PTE_W)||( pte & PTE_COW)))
 	{
 		r=sys_page_map(0,(void *)addr,envid,(void *)addr,PTE_P|PTE_U);

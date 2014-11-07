@@ -169,7 +169,7 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 		cprintf("error while converting envid to env\n");
 		return r;
 	}
-	user_mem_assert(e,tf,sizeof(struct Trapframe),PTE_U);
+	//user_mem_assert(e,tf,sizeof(struct Trapframe),PTE_U);
 	tf->tf_cs|=0x3;
 	tf->tf_eflags|=FL_IF;
 	e->env_tf=*tf;	
@@ -191,13 +191,13 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func)
 	struct Env *new_env;
 	int status;
 	status=envid2env(envid,&new_env,1);
-//	cprintf("set upcall for envid=%x\n",envid);
+	cprintf("set upcall for envid=%x\n",envid);
 	if(status==-E_BAD_ENV)
 	{
 		cprintf("bad env in sys_env_set_pgfault error=%e envid=%x\n",status,envid);
 		return -E_BAD_ENV;
 	}
-//	cprintf("page upcall\n");
+	cprintf("page upcall\n");
 	new_env->env_pgfault_upcall=func;
 	return 0;
 
@@ -487,7 +487,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
         e->env_ipc_from = curenv->env_id;
         e->env_ipc_value = value;
         e->env_status = ENV_RUNNABLE;
-//	cprintf("entering 5 sys_ipc_try_send\n");
+//	cprintf("entering 5 sys_ipc_try_send val=%08x\n",value);
 	return 0;
 	panic("sys_ipc_try_send not implemented");
 }
@@ -507,13 +507,13 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-//	cprintf("entering sys_ipc_recv\n");
+	//cprintf("entering sys_ipc_recv\n");
 	if((dstva>(void *)UTOP))
 		return -E_INVAL;
 	if((dstva<(void *)UTOP))
 	{
 		if((((uint64_t)dstva)%PGSIZE)!=0)
-		{//cprintf("sys_ipc_recv error dstva= %x,utop=%x\n",dstva,UTOP);
+		{cprintf("sys_ipc_recv error dstva= %x,utop=%x\n",dstva,UTOP);
 		return -E_INVAL;}
 //		curenv->env_ipc_dstva = dstva;
 //		curenv->env_ipc_perm = 0;

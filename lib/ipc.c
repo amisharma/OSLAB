@@ -44,7 +44,7 @@ ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
                 *from_env_store = thisenv->env_ipc_from;
         if (perm_store!= NULL)
                 *perm_store = thisenv->env_ipc_perm;
-//	        cprintf("entering 3 ipc recv\n");
+//	        cprintf("entering 3 ipc recv value=%08x\n",thisenv->env_ipc_value);
         return thisenv->env_ipc_value;
 
         //panic("ipc_recv not implemented");
@@ -68,7 +68,7 @@ ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 	 int r;
         if(pg == NULL)
                 pg = (void *)UTOP;
-//	cprintf("entering ipc_send\n");
+//	cprintf("entering ipc_send val=%08x\n",val);
         while(1){
                 r = sys_ipc_try_send(to_env, val, pg, perm);
                 if (r == 0)

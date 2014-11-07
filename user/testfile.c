@@ -14,6 +14,7 @@ xopen(const char *path, int mode)
 	fsipcbuf.open.req_omode = mode;
 
 	fsenv = ipc_find_env(ENV_TYPE_FS);
+	cprintf("calling ipc_send in testfile.c\n");
 	ipc_send(fsenv, FSREQ_OPEN, &fsipcbuf, PTE_P | PTE_W | PTE_U);
 	return ipc_recv(NULL, FVA, NULL);
 }

@@ -2,7 +2,7 @@
 #include <inc/string.h>
 #include <inc/lib.h>
 
-#define debug 0
+#define debug 1
 
 union Fsipc fsipcbuf __attribute__((aligned(PGSIZE)));
 
@@ -24,7 +24,9 @@ fsipc(unsigned type, void *dstva)
 	if (debug)
 		cprintf("[%08x] fsipc %d %08x\n", thisenv->env_id, type, *(uint32_t *)&fsipcbuf);
 
+
 	ipc_send(fsenv, type, &fsipcbuf, PTE_P | PTE_W | PTE_U);
+	cprintf("calling ipc_recv in fsipc\n");
 	return ipc_recv(NULL, dstva, NULL);
 }
 
@@ -71,7 +73,7 @@ open(const char *path, int mode)
 	if(strlen(path)>=MAXPATHLEN)
 		return -E_BAD_PATH;
 	int r,del;
-//	cprintf("entering open \n");
+	cprintf("entering open %s \n",path);
 	r=fd_alloc(&new_file);
 	if(r<0)
 	{
@@ -84,7 +86,7 @@ open(const char *path, int mode)
 		cprintf("new file is NULL\n");
 		return -E_INVAL;
 	}
-	strncpy(fsipcbuf.open.req_path,path,strlen(path));
+	strcpy(fsipcbuf.open.req_path,path);
 	fsipcbuf.open.req_omode=mode;
 	fsipcbuf.open.req_path[strlen(path)] = '\0';
 
