@@ -70,11 +70,12 @@ uintptr_t addr;
 	pte_t entry=uvpt[pn];
 	int cow_perm=entry&PTE_SYSCALL;
 	pte_t pte=uvpt[pn];
-	if(pte&PTE_SHARE)
+	if((entry&PTE_SYSCALL)&PTE_SHARE)
 	{
-		r=sys_page_map(0,(void*)addr,envid,(void *)addr,cow_perm|PTE_SHARE);
+		r=sys_page_map(0,(void*)addr,envid,(void *)addr,(entry&PTE_SYSCALL)|PTE_SHARE);
 		if(r<0)
 			panic("error in duppage while sys_page_map share");
+		return 0;
 	}
 	if(!((pte&PTE_W)||( pte & PTE_COW)))
 	{
