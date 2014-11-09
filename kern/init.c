@@ -9,6 +9,7 @@
 #include <kern/console.h>
 #include <kern/kdebug.h>
 #include <kern/dwarf_api.h>
+//<<<<<<< HEAD
 #include <kern/pmap.h>
 #include <kern/kclock.h>
 #include <kern/env.h>
@@ -20,6 +21,9 @@
 #include <kern/time.h>
 #include <kern/pci.h>
 
+//=======
+#include<inc/x86.h>
+//>>>>>>> master
 uint64_t end_debug;
 
 static void boot_aps(void);
@@ -29,9 +33,7 @@ void
 i386_init(void)
 {
     /* __asm __volatile("int $12"); */
-
 	extern char edata[], end[];
-
 	// Before doing anything else, complete the ELF loading process.
 	// Clear the uninitialized global data (BSS) section of our program.
 	// This ensures that all static/global variables start out zero.
@@ -40,9 +42,7 @@ i386_init(void)
 	// Initialize the console.
 	// Can't call cprintf until after we do this!
 	cons_init();
-
 	cprintf("6828 decimal is %o octal!\n", 6828);
-
     extern char end[];
     end_debug = read_section_headers((0x10000+KERNBASE), (uintptr_t)end); 
 
@@ -52,13 +52,16 @@ i386_init(void)
 	// Lab 3 user environment initialization functions
 	env_init();
 	trap_init();
+        //cprintf("test_init1");
 
 	// Lab 4 multiprocessor initialization functions
 	mp_init();
 	lapic_init();
+	 //       cprintf("test_init2");
 
 	// Lab 4 multitasking initialization functions
 	pic_init();
+       // cprintf("test_init3");
 
 	// Lab 6 hardware initialization functions
 	time_init();
@@ -66,31 +69,49 @@ i386_init(void)
 
 	// Acquire the big kernel lock before waking up APs
 	// Your code here:
-
+	lock_kernel();
 	// Starting non-boot CPUs
+        //cprintf("test_init4");
 	boot_aps();
+//<<<<<<< HEAD
 
 	// Start fs.
 	ENV_CREATE(fs_fs, ENV_TYPE_FS);
 
+<<<<<<< HEAD
 #if !defined(TEST_NO_NS)
 	// Start ns.
 	ENV_CREATE(net_ns, ENV_TYPE_NS);
 #endif
 
+=======
+//=======
+	//cprintf("test_init");
+//>>>>>>> lab4
+>>>>>>> lab5
 #if defined(TEST)
 	// Don't touch -- used by grading script!
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
+//<<<<<<< HEAD
 	ENV_CREATE(user_icode, ENV_TYPE_USER);
+//=======
+
+	 //cprintf("creating user_yield\n");	
+	ENV_CREATE(user_yield, ENV_TYPE_USER); 
+	ENV_CREATE(user_spawnhello, ENV_TYPE_USER);
+	ENV_CREATE(user_hello, ENV_TYPE_USER);
+	  // ENV_CREATE(user_faultalloc, ENV_TYPE_USER);
+//>>>>>>> lab4
 #endif // TEST*
 
 	// Should not be necessary - drains keyboard because interrupt has given up.
 	kbd_intr();
 
 	// Schedule and run the first user environment!
-	sched_yield();
+//	cprintf("creating user_yield\n");	
+sched_yield();
 }
 
 // While boot_aps is booting a given CPU, it communicates the per-core
@@ -142,7 +163,8 @@ mp_main(void)
 	// only one CPU can enter the scheduler at a time!
 	//
 	// Your code here:
-
+	lock_kernel();
+	sched_yield();
 	// Remove this after you finish Exercise 4
 	for (;;);
 }

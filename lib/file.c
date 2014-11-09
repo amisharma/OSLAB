@@ -24,7 +24,9 @@ fsipc(unsigned type, void *dstva)
 	if (debug)
 		cprintf("[%08x] fsipc %d %08x\n", thisenv->env_id, type, *(uint32_t *)&fsipcbuf);
 
+
 	ipc_send(fsenv, type, &fsipcbuf, PTE_P | PTE_W | PTE_U);
+//	cprintf("calling ipc_recv in fsipc\n");
 	return ipc_recv(NULL, dstva, NULL);
 }
 
@@ -67,6 +69,44 @@ open(const char *path, int mode)
 	// file descriptor.
 
 	// LAB 5: Your code here
+	struct Fd *new_file;
+	if(strlen(path)>=MAXPATHLEN)
+		return -E_BAD_PATH;
+	int r,del;
+//	cprintf("entering open %s \n",path);
+	r=fd_alloc(&new_file);
+	if(r<0)
+	{
+		cprintf("error while fs_alloc in open\n");
+		return r;
+	}
+//	cprintf("entering 2 open \n");
+	if(new_file==NULL)
+	{
+		cprintf("new file is NULL\n");
+		return -E_INVAL;
+	}
+	strcpy(fsipcbuf.open.req_path,path);
+	fsipcbuf.open.req_omode=mode;
+	fsipcbuf.open.req_path[strlen(path)] = '\0';
+
+//	cprintf("entering 3 open \n");
+	r=fsipc(FSREQ_OPEN,(void *)new_file);
+//	cprintf("entering 4 open \n");
+	if(r<0)
+	{
+		del=fd_close(new_file,0);
+		if(del<0)
+		{
+			cprintf("error while fd_close in open\n");
+			return del;
+		}
+		cprintf("error while fsipc open in open \n");
+		return r;
+	}
+//	cprintf("entering 5 open \n");
+	return fd2num(new_file);
+
 	panic ("open not implemented");
 }
 
@@ -98,6 +138,27 @@ devfile_read(struct Fd *fd, void *buf, size_t n)
 	// bytes read will be written back to fsipcbuf by the file
 	// system server.
 	// LAB 5: Your code here
+//	cprintf("entering file_read\n");
+	if(!fd ||!buf)
+	{
+		cprintf("exiting 1 file_read\n");
+		return -E_INVAL;
+	}
+	int file_id=fd->fd_file.id;
+	fsipcbuf.read.req_fileid=fd->fd_file.id;
+	fsipcbuf.read.req_n=n;
+//	cprintf("entering 2  file_read\n");
+	ssize_t num_r =fsipc(FSREQ_READ,NULL);
+//	cprintf("entering 3 file_read\n");
+	if(num_r<0)
+	{                
+		cprintf("exiting 2 file_read\n");
+		return num_r;
+	}
+	memmove(buf,(void *)&fsipcbuf.readRet.ret_buf,num_r);
+  //              cprintf("exiting 3 file_read\n");
+
+	return num_r;
 	panic("devfile_read not implemented");
 }
 

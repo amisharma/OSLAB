@@ -12,9 +12,9 @@ xopen(const char *path, int mode)
 	
 	strcpy(fsipcbuf.open.req_path, path);
 	fsipcbuf.open.req_omode = mode;
-
+	cprintf("entering xopen in testfilero\n");
 	fsenv = ipc_find_env(ENV_TYPE_FS);
-	ipc_send(fsenv, FSREQ_OPEN, &fsipcbuf, PTE_P | PTE_W | PTE_U);
+ipc_send(fsenv, FSREQ_OPEN, &fsipcbuf, PTE_P | PTE_W | PTE_U);
 	return ipc_recv(NULL, FVA, NULL);
 }
 

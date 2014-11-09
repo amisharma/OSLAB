@@ -14,6 +14,7 @@ xopen(const char *path, int mode)
 	fsipcbuf.open.req_omode = mode;
 
 	fsenv = ipc_find_env(ENV_TYPE_FS);
+	cprintf("calling ipc_send in testfile.c\n");
 	ipc_send(fsenv, FSREQ_OPEN, &fsipcbuf, PTE_P | PTE_W | PTE_U);
 	return ipc_recv(NULL, FVA, NULL);
 }
@@ -26,17 +27,18 @@ umain(int argc, char **argv)
 	struct Fd fdcopy;
 	struct Stat st;
 	char buf[512];
-
+	cprintf("entering testfile.c\n");
 	// We open files manually first, to avoid the FD layer
 	if ((r = xopen("/not-found", O_RDONLY)) < 0 && r != -E_NOT_FOUND)
 		panic("serve_open /not-found: %e", r);
 	else if (r >= 0)
 		panic("serve_open /not-found succeeded!");
-
+	cprintf("entering 2 testfile.c\n");
 	if ((r = xopen("/newmotd", O_RDONLY)) < 0)
 		panic("serve_open /newmotd: %e", r);
 	if (FVA->fd_dev_id != 'f' || FVA->fd_offset != 0 || FVA->fd_omode != O_RDONLY)
 		panic("serve_open did not fill struct Fd correctly\n");
+	cprintf("entering 3 testfile.c\n");
 	cprintf("serve_open is good\n");
 
 	if ((r = devfile.dev_stat(FVA, &st)) < 0)

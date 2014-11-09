@@ -27,6 +27,7 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace","display stack trace", mon_backtrace },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -61,11 +62,42 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
+	int i,j;
+	int k=0;
+	uint64_t *offset,*arg,*rbp2;
+	struct Ripdebuginfo rip_info;
+	cprintf("Stack backtrace:\n");
+        uint64_t *rbp=(uint64_t *)read_rbp();
+	uint64_t *rip=(uint64_t *)read_rip();
+	__asm __volatile("leaq (%%rip), %0" : "=r" (rip)::"cc","memory");
+	 debuginfo_rip((uintptr_t)rip,&rip_info);
+                cprintf("  rbp %016x  rip %016x\n",rbp,rip);    
+                offset=(uint64_t *)((uint64_t *)rip-(uint64_t *)rip_info.rip_fn_addr);
+                cprintf("      %s:%d: %s+%016x  args:%d ",rip_info.rip_file,rip_info.rip_line,rip_info.rip_fn_name,offset,rip_info.rip_fn_narg);
+                uint64_t *x = (uint64_t *) rbp;
+                k = 0;
+                for(j=0; j<rip_info.rip_fn_narg; j++){
+                cprintf("%016x ", *((x+3)+k)>>32);}       
+                cprintf("\n");
+	while(*(rbp))
+		{
+		rip=(uint64_t *)*(rbp+1);	
+		debuginfo_rip((uintptr_t)rip,&rip_info);
+		cprintf("rbp %016x rip %016x\n",rbp,rip);	
+		offset=(uint64_t *)((uint64_t *)rip-(uint64_t *)rip_info.rip_fn_addr);
+		cprintf("\t%s:%d: %s+%016d  args:%d  ",rip_info.rip_file,rip_info.rip_line,rip_info.rip_fn_name,offset,rip_info.rip_fn_narg);
+		uint64_t *x = (uint64_t *) rbp;
+        	k = 0;
+        	for(j=0; j<rip_info.rip_fn_narg; j++)
+		{
+        		cprintf("%016x", *((x+3)+k)>>32);
+			k++;
+		}	
+		rbp=(uint64_t *)*rbp;
+		cprintf("\n");
+		}			
 	return 0;
 }
-
-
 
 /***** Kernel monitor command interpreter *****/
 
@@ -99,7 +131,6 @@ runcmd(char *buf, struct Trapframe *tf)
 			buf++;
 	}
 	argv[argc] = 0;
-
 	// Lookup and invoke the command
 	if (argc == 0)
 		return 0;

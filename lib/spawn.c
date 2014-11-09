@@ -88,7 +88,7 @@ spawn(const char *prog, const char **argv)
 	if ((r = open(prog, O_RDONLY)) < 0)
 		return r;
 	fd = r;
-
+//cprintf("entering spwan 1\n");
 	// Read elf header
 	elf = (struct Elf*) elf_buf;
 	if (readn(fd, elf_buf, sizeof(elf_buf)) != sizeof(elf_buf)
@@ -97,18 +97,25 @@ spawn(const char *prog, const char **argv)
 		cprintf("elf magic %08x want %08x\n", elf->e_magic, ELF_MAGIC);
 		return -E_NOT_EXEC;
 	}
-
+//cprintf("entering spawn 2\n");
 	// Create new child environment
 	if ((r = sys_exofork()) < 0)
+	{	cprintf("exiting spawn 2\n");
 		return r;
+	}
 	child = r;
+//cprintf("entering spawn 3\n");
 
 	// Set up trap frame, including initial stack.
 	child_tf = envs[ENVX(child)].env_tf;
 	child_tf.tf_rip = elf->e_entry;
+//cprintf("entering spawn 4\n");
 
 	if ((r = init_stack(child, argv, &child_tf.tf_rsp)) < 0)
+	{	cprintf("exiting spawn 3\n");
 		return r;
+	}
+//cprintf("entering spawn 5\n");
 
 	// Set up program segments as defined in ELF header.
 	ph = (struct Proghdr*) (elf_buf + elf->e_phoff);
@@ -128,7 +135,7 @@ spawn(const char *prog, const char **argv)
 	// Copy shared library state.
 	if ((r = copy_shared_pages(child)) < 0)
 		panic("copy_shared_pages: %e", r);
-
+//cprintf("entering spawn 6\n");
 	if ((r = sys_env_set_trapframe(child, &child_tf)) < 0)
 		panic("sys_env_set_trapframe: %e", r);
 
@@ -138,6 +145,8 @@ spawn(const char *prog, const char **argv)
 	return child;
 
 error:
+cprintf("entering spawn 7\n");
+
 	sys_env_destroy(child);
 	close(fd);
 	return r;
@@ -301,6 +310,25 @@ static int
 copy_shared_pages(envid_t child)
 {
 	// LAB 5: Your code here.
-	return 0;
-}
+	uint64_t pn,x;
+        uint64_t va;
+	int r;
+//	cprintf("entering copy_shared_pages child envid=%08x\n",child);
+        for(va=(UTEXT);va<(UXSTACKTOP-PGSIZE);va+=PGSIZE)
+	{
+                if(!((uvpml4e[VPML4E(va)]&PTE_P)&&(uvpde[VPDPE(va)]&PTE_P)&&(uvpd[VPD(va)]&PTE_P)))
+                {
+                        continue;
+                }
+		if(uvpt[VPN(va)]&PTE_SHARE)
+		{
+			r=sys_page_map(0,(void *)va,child,(void *) va,(uvpt[VPN(va)]&PTE_SYSCALL)|PTE_SHARE);	
+			if(r<0)
+				cprintf("error in duppage at sys_page_map\n");
+		}	
+		
+        }
 
+	return 0;
+
+}
