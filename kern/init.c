@@ -78,17 +78,17 @@ i386_init(void)
 	// Start fs.
 	ENV_CREATE(fs_fs, ENV_TYPE_FS);
 
-<<<<<<< HEAD
+//<<<<<<< HEAD
 #if !defined(TEST_NO_NS)
 	// Start ns.
 	ENV_CREATE(net_ns, ENV_TYPE_NS);
 #endif
 
-=======
+//=======
 //=======
 	//cprintf("test_init");
 //>>>>>>> lab4
->>>>>>> lab5
+//>>>>>>> lab5
 #if defined(TEST)
 	// Don't touch -- used by grading script!
 	ENV_CREATE(TEST, ENV_TYPE_USER);
