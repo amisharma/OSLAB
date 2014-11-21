@@ -122,3 +122,7 @@ sys_time_msec(void)
 {
 	return (unsigned int) syscall(SYS_time_msec, 0, 0, 0, 0, 0, 0);
 }
+int sys_transmit(const char *data,size_t len)
+{
+	return (int)syscall(SYS_transmit,0,(uint64_t)data,len,0,0,0);
+}
