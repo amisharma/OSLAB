@@ -547,7 +547,15 @@ static int sys_transmit(const char *a1,size_t a2)
 		return -E_INVAL;
 	return transmit(a1,a2);	
 }
-
+static int sys_receive(const char*a1,int *length)
+{
+	if((uint64_t)a1>=UTOP)
+		return -E_INVAL;
+	*length=receive(a1);
+	if(*length>0)
+		return 0;
+	return *length;
+}
 
 // Dispatches to the correct kernel function, passing the arguments.
 int64_t
@@ -566,6 +574,8 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 		return 0;
 	case SYS_transmit:
 		return sys_transmit((const char*)a1,(size_t)a2);
+	case SYS_receive:
+		return sys_receive((const char*)a1,(int *)a2);
 	case SYS_cgetc:
 		return sys_cgetc();
 	case SYS_getenvid:

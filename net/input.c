@@ -13,4 +13,19 @@ input(envid_t ns_envid)
 	// Hint: When you IPC a page to the network server, it will be
 	// reading from it for a while, so don't immediately receive
 	// another packet in to the same physical page.
+	int RPKT_SIZE=2048;
+	int lop=RPKT_SIZE-1;
+	int r=0;
+	char buf[RPKT_SIZE];
+	while(1)
+	{
+		while((r=sys_receive(buf,&lop))<0)
+		{
+			sys_yield();
+		}
+	while((r=sys_page_alloc(0,&nsipcbuf,PTE_P|PTE_U|PTE_W))<0);
+	nsipcbuf.pkt.jp_len=lop;
+	memmove(nsipcbuf.pkt.jp_data,buf,lop);
+	while((r=sys_ipc_try_send(ns_envid,NSREQ_INPUT,&nsipcbuf,PTE_P|PTE_U|PTE_W))<0);	
+}
 }

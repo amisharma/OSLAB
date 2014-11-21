@@ -11,6 +11,8 @@
 #define E1000_TXD_STAT_DD    0x00000001 /* Descriptor Done */
 #define E1000_TXD_CMD_EOP    0x01 /* End of Packet */
 #define E1000_TXD_CMD_RS     0x08 /* Report Status */
+#define E1000_RXD_STAT_DD       0x01    /* Descriptor Done */
+#define E1000_RXD_STAT_EOP      0x02    /* End of Packet */
 #define E1000_RAL  0x05400/4
 #define E1000_RAH  0X05404/4
 #define E1000_RCTL_BSEX           0x02000000    /* Buffer size extension */
