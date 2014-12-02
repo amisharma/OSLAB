@@ -12,6 +12,8 @@
 //<<<<<<< HEAD
 #include <kern/pmap.h>
 #include <kern/kclock.h>
+#include <kern/env.h>
+#include <kern/trap.h>
 
 //=======
 #include<inc/x86.h>
@@ -39,9 +41,27 @@ i386_init(void)
 	// Lab 2 memory management initialization functions
 	x64_vm_init();
 
-	// Drop into the kernel monitor.
-	while (1)
-		monitor(NULL);
+	// Lab 3 user environment initialization functions
+	env_init();
+	trap_init();
+
+#if defined(TEST)
+	// Don't touch -- used by grading script!
+	ENV_CREATE(TEST, ENV_TYPE_USER);
+#else
+	// Touch all you want.
+//	ENV_CREATE(user_divzero, ENV_TYPE_USER);
+//	ENV_CREATE(user_badsegment, ENV_TYPE_USER);
+//	ENV_CREATE(user_testbss, ENV_TYPE_USER);
+//	ENV_CREATE(user_hello, ENV_TYPE_USER);
+        ENV_CREATE(user_evilhello, ENV_TYPE_USER);
+#endif // TEST*
+	//ENV_CREATE(user_hello, ENV_TYPE_USER);
+  //      ENV_CREATE(user_testbss, ENV_TYPE_USER);
+	// We only have one user environment for now, so just run it.
+//	cprintf("\n\ncalling env_run\n");
+	env_run(&envs[0]);
+//	cprintf("success env_run_init");
 }
 
 
