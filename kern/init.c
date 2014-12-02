@@ -14,11 +14,17 @@
 #include <kern/kclock.h>
 #include <kern/env.h>
 #include <kern/trap.h>
+#include <kern/sched.h>
+#include <kern/picirq.h>
+#include <kern/cpu.h>
+#include <kern/spinlock.h>
 
 //=======
 #include<inc/x86.h>
 //>>>>>>> master
 uint64_t end_debug;
+
+static void boot_aps(void);
 
 
 void
@@ -44,26 +50,96 @@ i386_init(void)
 	// Lab 3 user environment initialization functions
 	env_init();
 	trap_init();
+        //cprintf("test_init1");
 
+	// Lab 4 multiprocessor initialization functions
+	mp_init();
+	lapic_init();
+	 //       cprintf("test_init2");
+
+	// Lab 4 multitasking initialization functions
+	pic_init();
+       // cprintf("test_init3");
+
+	// Acquire the big kernel lock before waking up APs
+	// Your code here:
+	lock_kernel();
+	// Starting non-boot CPUs
+        //cprintf("test_init4");
+	boot_aps();
+	//cprintf("test_init");
 #if defined(TEST)
 	// Don't touch -- used by grading script!
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-//	ENV_CREATE(user_divzero, ENV_TYPE_USER);
-//	ENV_CREATE(user_badsegment, ENV_TYPE_USER);
-//	ENV_CREATE(user_testbss, ENV_TYPE_USER);
-//	ENV_CREATE(user_hello, ENV_TYPE_USER);
-        ENV_CREATE(user_evilhello, ENV_TYPE_USER);
+
+	 //cprintf("creating user_yield\n");	
+	ENV_CREATE(user_yield, ENV_TYPE_USER); 
+	ENV_CREATE(user_yield, ENV_TYPE_USER);
+//	ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
+	  // ENV_CREATE(user_faultalloc, ENV_TYPE_USER);
 #endif // TEST*
-	//ENV_CREATE(user_hello, ENV_TYPE_USER);
-  //      ENV_CREATE(user_testbss, ENV_TYPE_USER);
-	// We only have one user environment for now, so just run it.
-//	cprintf("\n\ncalling env_run\n");
-	env_run(&envs[0]);
-//	cprintf("success env_run_init");
+
+	// Schedule and run the first user environment!
+//	cprintf("creating user_yield\n");	
+sched_yield();
 }
 
+// While boot_aps is booting a given CPU, it communicates the per-core
+// stack pointer that should be loaded by mpentry.S to that CPU in
+// this variable.
+void *mpentry_kstack;
+
+// Start the non-boot (AP) processors.
+static void
+boot_aps(void)
+{
+	extern unsigned char mpentry_start[], mpentry_end[];
+	void *code;
+	struct CpuInfo *c;
+
+	// Write entry code to unused memory at MPENTRY_PADDR
+	code = KADDR(MPENTRY_PADDR);
+	memmove(code, mpentry_start, mpentry_end - mpentry_start);
+	// Boot each AP one at a time
+	for (c = cpus; c < cpus + ncpu; c++) {
+		if (c == cpus + cpunum())  // We've started already.
+			continue;
+
+		// Tell mpentry.S what stack to use 
+		mpentry_kstack = percpu_kstacks[c - cpus] + KSTKSIZE;
+		// Start the CPU at mpentry_start
+		lapic_startap(c->cpu_id, PADDR(code));
+		// Wait for the CPU to finish some basic setup in mp_main()
+		while(c->cpu_status != CPU_STARTED)
+			;
+	}
+}
+
+// Setup code for APs
+void
+mp_main(void)
+{
+	// We are in high EIP now, safe to switch to kern_pgdir 
+	lcr3(boot_cr3);
+	cprintf("SMP: CPU %d starting\n", cpunum());
+
+	lapic_init();
+	env_init_percpu();
+	trap_init_percpu();
+	xchg(&thiscpu->cpu_status, CPU_STARTED); // tell boot_aps() we're up
+
+	// Now that we have finished some basic setup, call sched_yield()
+	// to start running processes on this CPU.  But make sure that
+	// only one CPU can enter the scheduler at a time!
+	//
+	// Your code here:
+	lock_kernel();
+	sched_yield();
+	// Remove this after you finish Exercise 4
+	for (;;);
+}
 
 /*
  * Variable panicstr contains argument to first call to panic; used as flag
@@ -88,7 +164,7 @@ _panic(const char *file, int line, const char *fmt,...)
 	__asm __volatile("cli; cld");
 
 	va_start(ap, fmt);
-	cprintf("kernel panic at %s:%d: ", file, line);
+	cprintf("kernel panic on CPU %d at %s:%d: ", cpunum(), file, line);
 	vcprintf(fmt, ap);
 	cprintf("\n");
 	va_end(ap);

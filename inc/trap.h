@@ -85,6 +85,53 @@ struct Trapframe {
     uint32_t tf_padding8;
 } __attribute__((packed));
 
+struct UTrapframe {
+	/* information about the fault */
+	uint64_t utf_fault_va;	/* va for T_PGFLT, 0 otherwise */
+	uint64_t utf_err;
+	/* trap-time return state */
+	struct PushRegs utf_regs;
+	uintptr_t utf_rip;
+	uint64_t utf_eflags;
+	/* the trap-time stack to return to */
+	uintptr_t utf_rsp;
+} __attribute__((packed));
+void xt_divide();
+void xt_debug();
+void xt_dblflt();
+void xt_syscall();
+void xt_nmi();
+void xt_brkpt();
+void xt_oflow();
+void xt_bound();
+void xt_illop();
+void xt_device();
+void xt_tss();
+void xt_segnp();
+void xt_stack();
+void xt_gpflt();
+void xt_pgflt();
+void xt_fperr();
+void xt_align();
+void xt_mchk();
+void xt_simderr();
+
+void xi_timer_0();
+void xi_timer_1();
+void xi_timer_2();
+void xi_timer_3();
+void xi_timer_4();
+void xi_timer_5();
+void xi_timer_6();
+void xi_timer_7();
+void xi_timer_8();
+void xi_timer_9();
+void xi_timer_10();
+void xi_timer_11();
+void xi_timer_12();
+void xi_timer_13();
+void xi_timer_14();
+void xi_timer_15();
 
 #endif /* !__ASSEMBLER__ */
 

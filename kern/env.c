@@ -13,9 +13,11 @@
 #include <kern/monitor.h>
 #include <kern/macro.h>
 #include <kern/dwarf_api.h>
+#include <kern/sched.h>
+#include <kern/cpu.h>
+#include <kern/spinlock.h>
 
 struct Env *envs = NULL;		// All environments
-struct Env *curenv = NULL;		// The current env
 static struct Env *env_free_list;	// Free environment list
 // (linked by Env->env_link)
 
@@ -36,7 +38,7 @@ static struct Env *env_free_list;	// Free environment list
 // definition of gdt specifies the Descriptor Privilege Level (DPL)
 // of that descriptor: 0 for kernel and 3 for user.
 //
-struct Segdesc gdt[] =
+struct Segdesc gdt[2*NCPU + 5] =
 {
 	// 0x0 - unused (always faults -- for trapping NULL far pointers)
 
@@ -54,7 +56,8 @@ struct Segdesc gdt[] =
 	// 0x20 - user data segment
 	[GD_UD >> 3] = SEG64(STA_W, 0x0, 0xffffffff,3),
 
-	// 0x28 - tss, initialized in trap_init_percpu()
+	// Per-CPU TSS descriptors (starting from GD_TSS0) are initialized
+	// in trap_init_percpu()
 	[GD_TSS0 >> 3] = SEG_NULL,
 	
 	[6] = SEG_NULL //last 8 bytes of the tss since tss is 16 bytes long
@@ -105,7 +108,7 @@ envid2env(envid_t envid, struct Env **env_store, bool checkperm)
 	if (checkperm && e != curenv && e->env_parent_id != curenv->env_id) {
 		*env_store = 0;
 		cprintf("error 2 in envid2env\n");
-		return -E_BAD_ENV;
+		return -E_INVAL;
 	}
 
 	*env_store = e;
@@ -124,18 +127,25 @@ env_init(void)
 	// Set up envs array
 	// LAB 3: Your code here.
 	int i;
+	struct Env *last=NULL;
 	for(i=0;i<NENV;i++)
 	{
 		envs[i].env_status=ENV_FREE;	
 		envs[i].env_id=0;
-	}
-	env_free_list=&envs[0];
+		envs[i].env_link=NULL;
+		if(last)
+			last->env_link=&envs[i];
+		else	
+			env_free_list=&envs[i];
+		last=&envs[i];
+}
+/*	env_free_list=&envs[0];
 	for(i=1;i<NENV-1;i++)
 	{
 		envs[i-1].env_link=(struct Env *)&envs[i];
 	}
 	envs[NENV-1].env_link=NULL;
-	// Per-CPU part of the initialization
+*/	// Per-CPU part of the initialization
 	env_init_percpu();
 //	cprintf("success env_init");
 }
@@ -177,11 +187,16 @@ env_setup_vm(struct Env *e)
 {
 	int r;
 	int i;
-	struct PageInfo *p = NULL,*p1=NULL,*p2=NULL;
+	struct PageInfo *p = NULL,*pp_pdpe=NULL,*pp_pgdir=NULL;
 	// Allocate a page for the page directory
 	if (!(p = page_alloc(0)))
 		return -E_NO_MEM;
-
+	pdpe_t *pdpe;
+	pdpe_t *pdpe1;
+	pde_t *pgdir;
+	pde_t *pgdir1;
+	pte_t *pte_cr3;
+	pte_t *pte_env;
 	// Now, set e->env_pgdir and initialize the page directory.
 	//
 	// Hint:
@@ -201,10 +216,22 @@ env_setup_vm(struct Env *e)
 
 	// LAB 3: Your code here.
 	p->pp_ref++;
-	e->env_pml4e = (pml4e_t *) page2kva(p);
-	e->env_cr3 = PADDR(e->env_pml4e);
-	for(i=PML4(UTOP);i<NPDENTRIES;i++)
-                e->env_pml4e[i]=boot_pml4e[i];
+	e->env_pml4e =  page2kva(p);
+	e->env_cr3 = page2pa(p);
+	if(!(pp_pdpe=page_alloc(0)))
+		return -E_NO_MEM;
+	pp_pdpe->pp_ref++;
+	pdpe=page2kva(pp_pdpe);
+	e->env_pml4e[PML4(UTOP)]=PADDR(pdpe)|PTE_P|PTE_U|PTE_W;
+	pdpe1=KADDR(PTE_ADDR(boot_pml4e[PML4(UTOP)]));
+	if(!(pp_pgdir = page_alloc(0)))
+		return -E_NO_MEM;
+	pp_pgdir->pp_ref++;
+	pgdir=page2kva(pp_pgdir);
+	pdpe[PDPE(UTOP)]=PADDR(pgdir)|PTE_P|PTE_U|PTE_W;
+	pgdir1=KADDR(PTE_ADDR(pdpe1[PDPE(UTOP)]));
+	for(i=PDX(UTOP);i<NPTENTRIES;i++)
+                pgdir[i]=pgdir1[i];
 	 e->env_pml4e[PML4(UVPT)] = e->env_cr3 | PTE_P | PTE_U;
 	return 0;
 }
@@ -224,7 +251,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	int r;
 	struct Env *e;
 
-	if (!(e = env_free_list))
+if (!(e = env_free_list))
 		return -E_NO_FREE_ENV;
 
 	// Allocate and set up the page directory for this environment.
@@ -263,6 +290,15 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	e->env_tf.tf_rsp = USTACKTOP;
 	e->env_tf.tf_cs = GD_UT | 3;
 	// You will set e->env_tf.tf_rip later.
+
+	// Enable interrupts while in user mode.
+	// LAB 4: Your code here.
+	e->env_tf.tf_eflags=e->env_tf.tf_eflags|FL_IF;
+	// Clear the page fault handler until user installs one.
+	e->env_pgfault_upcall = 0;
+
+	// Also clear the IPC receiving flag.
+	e->env_ipc_recving = 0;
 
 	// commit the allocation
 	env_free_list = e->env_link;
@@ -392,21 +428,21 @@ load_icode(struct Env *e, uint8_t *binary)
 				return;
 			}
 			region_alloc(e,(void *)prog_h->p_va,prog_h->p_memsz);
-//			cprintf("calling lcr3_env");
+			//cprintf("calling lcr3_env");
 			lcr3(e->env_cr3);
 			memcpy((char *)prog_h->p_va,binary+prog_h->p_offset,prog_h->p_filesz);
 			//lcr3(e->env_cr3);
 			//lcr3(boot_cr3);
-//			cprintf("success lcr3_env");
+			//cprintf("success lcr3_env");
 			if(prog_h->p_filesz<prog_h->p_memsz)
 			{
 				mem = prog_h->p_va + prog_h->p_filesz;
 				r_mem = prog_h->p_memsz - prog_h->p_filesz;
 				memset((void *)mem,0,r_mem);
 			}
-//			cprintf("calling lcr3_boot");
+			//cprintf("calling lcr3_boot");
 			lcr3(boot_cr3);
-//			cprintf("success lcr3_boot");
+			//cprintf("success lcr3_boot");
 		}
    	}
 //	lcr3(e->env_cr3);
@@ -417,7 +453,7 @@ load_icode(struct Env *e, uint8_t *binary)
 	//LAB 3: Your code here.
 	region_alloc(e,(void *)USTACKTOP-PGSIZE,PGSIZE);
 	e->env_tf.tf_rip=elf_h->e_entry;
-//	cprintf("success load_icode!!!");
+	//cprintf("success load_icode!!!");
 	return;
 }
 
@@ -433,12 +469,14 @@ env_create(uint8_t *binary, enum EnvType type)
 {
 	// LAB 3: Your code here.
 	struct Env *env;
-	//cprintf("env_alloc");
-	env_alloc(&env,0);
-	env->env_type=type;
+//	cprintf("env_alloc\n");
+	int val=env_alloc(&env,0);
+	if(val<0)
+		panic("env_create fail");
 	
 	load_icode(env,binary);
-//	cprintf("success env_create");
+	        env->env_type=type;
+	cprintf("success env_create\n");
 }
 
 //
@@ -514,15 +552,27 @@ env_free(struct Env *e)
 
 //
 // Frees environment e.
+// If e was the current env, then runs a new environment (and does not return
+// to the caller).
 //
 	void
 env_destroy(struct Env *e)
 {
+	// If e is currently running on other CPUs, we change its state to
+	// ENV_DYING. A zombie environment will be freed the next time
+	// it traps to the kernel.
+	cprintf("entering env destroy envid=%x\n",e->env_id);
+	if (e->env_status == ENV_RUNNING && curenv != e) {
+		e->env_status = ENV_DYING;
+		return;
+	}
+	cprintf("entering env destroy 2 envid=%x\n",e->env_id);
 	env_free(e);
 
-	cprintf("Destroyed the only environment - nothing more to do!\n");
-	while (1)
-		monitor(NULL);
+	if (curenv == e) {
+		curenv = NULL;
+		sched_yield();
+	}
 }
 
 
@@ -535,6 +585,9 @@ env_destroy(struct Env *e)
 	void
 env_pop_tf(struct Trapframe *tf)
 {
+	// Record the CPU we are running on for user-space debugging
+	curenv->env_cpunum = cpunum();
+
 	__asm __volatile("movq %0,%%rsp\n"
 			 POPA
 			 "movw (%%rsp),%%es\n"
@@ -577,13 +630,14 @@ env_run(struct Env *e)
 	if((curenv)&&(curenv->env_status ==ENV_RUNNING))
 		curenv->env_status =ENV_RUNNABLE;
 	curenv=e;
-	//cprintf("env_run2\n");
+//	cprintf("env_run2\n");
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
 	lcr3(curenv->env_cr3);
-	//cprintf("env_run3\n");
+//	cprintf("env_run3\n");
+	unlock_kernel();
 	env_pop_tf(&curenv->env_tf);
-	//cprintf("success env_run");
+//	cprintf("success env_run");
 	//panic("env_run not yet implemented");
 }
 
