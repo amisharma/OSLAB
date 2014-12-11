@@ -834,7 +834,7 @@ mmio_map_region(physaddr_t pa, size_t size)
 	size=ROUNDUP(size,PGSIZE);
 	if(base+size>MMIOLIM)
 	{
-		panic("size out of bounds in mmio_map_region");
+		cprintf("size out of bounds in mmio_map_region");
 		return (void *)base;
 	}
 	boot_map_region(boot_pml4e,base2,size,pa,PTE_PCD|PTE_PWT|PTE_W);

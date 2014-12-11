@@ -29,7 +29,7 @@ int attachE1000(struct pci_func *pcif)
                 //tx_que[i].status |= E1000_TXD_STAT_DD;
         }
 
-	  loc_mmio[E1000_RAL] = 0x52;
+	loc_mmio[E1000_RAL] = 0x52;
         loc_mmio[E1000_RAL] |= (0x54) << 8;
         loc_mmio[E1000_RAL] |= (0x00) << 16;
         loc_mmio[E1000_RAL] |= (0x12) << 24;
