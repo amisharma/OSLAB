@@ -13,7 +13,12 @@
 #include <kern/picirq.h>
 #include <kern/cpu.h>
 #include <kern/spinlock.h>
+//<<<<<<< HEAD
+#include <kern/time.h>
+
+//=======
 #include<inc/string.h>
+//>>>>>>> lab5
 extern uintptr_t gdtdesc_64;
 static struct Taskstate ts;
 extern struct Segdesc gdt[];
@@ -232,6 +237,15 @@ trap_dispatch(struct Trapframe *tf)
 	// LAB 4: Your code here.
 
 //<<<<<<< HEAD
+	// Add time tick increment to clock interrupts.
+	// Be careful! In multiprocessors, clock interrupts are
+	// triggered on every CPU.
+	// LAB 6: Your code here.
+
+
+//=======
+//<<<<<<< HEAD
+//>>>>>>> lab5
 	// Handle keyboard and serial interrupts.
 	// LAB 5: Your code here.
 	if(tf->tf_trapno==IRQ_OFFSET+IRQ_KBD)
@@ -275,7 +289,7 @@ trap_dispatch(struct Trapframe *tf)
 	else if(tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER)
 	{
 		lapic_eoi();
-//		time_tick();
+		time_tick();
 		sched_yield();
 	}
 	print_trapframe(tf);

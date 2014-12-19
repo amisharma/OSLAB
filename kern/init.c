@@ -18,6 +18,8 @@
 #include <kern/picirq.h>
 #include <kern/cpu.h>
 #include <kern/spinlock.h>
+#include <kern/time.h>
+#include <kern/pci.h>
 
 //=======
 #include<inc/x86.h>
@@ -61,6 +63,10 @@ i386_init(void)
 	pic_init();
        // cprintf("test_init3");
 
+	// Lab 6 hardware initialization functions
+	time_init();
+	pci_init();
+
 	// Acquire the big kernel lock before waking up APs
 	// Your code here:
 	lock_kernel();
@@ -72,9 +78,17 @@ i386_init(void)
 	// Start fs.
 	ENV_CREATE(fs_fs, ENV_TYPE_FS);
 
+//<<<<<<< HEAD
+#if !defined(TEST_NO_NS)
+	// Start ns.
+	ENV_CREATE(net_ns, ENV_TYPE_NS);
+#endif
+
+//=======
 //=======
 	//cprintf("test_init");
 //>>>>>>> lab4
+//>>>>>>> lab5
 #if defined(TEST)
 	// Don't touch -- used by grading script!
 	ENV_CREATE(TEST, ENV_TYPE_USER);

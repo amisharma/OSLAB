@@ -327,8 +327,11 @@ umain(int argc, char **argv)
 
 	serve_init();
 	fs_init();
+//<<<<<<< HEAD
+//=======
 	fs_test();
 //	cprintf("calling serve\n");
+//>>>>>>> lab5
 	serve();
 //	cprintf("exiting serve\n");
 }

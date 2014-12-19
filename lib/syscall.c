@@ -117,3 +117,16 @@ sys_ipc_recv(void *dstva)
 	return syscall(SYS_ipc_recv, 1, (uint64_t)dstva, 0, 0, 0, 0);
 }
 
+unsigned int
+sys_time_msec(void)
+{
+	return (unsigned int) syscall(SYS_time_msec, 0, 0, 0, 0, 0, 0);
+}
+int sys_transmit(const char *data,size_t len)
+{
+	return (int)syscall(SYS_transmit,0,(uint64_t)data,len,0,0,0);
+}
+int sys_receive(const char *data,int* len)
+{
+	return (int)syscall(SYS_receive,0,(uint64_t)data,(size_t)len,0,0,0);
+}

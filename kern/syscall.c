@@ -11,7 +11,8 @@
 #include <kern/syscall.h>
 #include <kern/console.h>
 #include <kern/sched.h>
-
+#include <kern/time.h>
+#include<kern/e1000.h>
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
 // Destroys the environment on memory errors.
@@ -531,7 +532,30 @@ sys_ipc_recv(void *dstva)
 }
 
 
+// Return the current time.
+static int
+sys_time_msec(void)
+{
+	// LAB 6: Your code here.
+	return time_msec();
+	panic("sys_time_msec not implemented");
+}
 
+static int sys_transmit(const char *a1,size_t a2)
+{
+	if((uint64_t)a1>=UTOP)
+		return -E_INVAL;
+	return transmit(a1,a2);	
+}
+static int sys_receive(const char*a1,int *length)
+{
+	if((uint64_t)a1>=UTOP)
+		return -E_INVAL;
+	*length=receive(a1);
+	if(*length>0)
+		return 0;
+	return *length;
+}
 
 // Dispatches to the correct kernel function, passing the arguments.
 int64_t
@@ -548,6 +572,10 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 	case SYS_cputs:
 		sys_cputs((char *)a1,a2);
 		return 0;
+	case SYS_transmit:
+		return sys_transmit((const char*)a1,(size_t)a2);
+	case SYS_receive:
+		return sys_receive((const char*)a1,(int *)a2);
 	case SYS_cgetc:
 		return sys_cgetc();
 	case SYS_getenvid:
@@ -577,6 +605,8 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 		return sys_ipc_recv((void *)a1);		
 	case SYS_env_set_trapframe:
 		return sys_env_set_trapframe(a1,(struct Trapframe *)a2);
+	case SYS_time_msec:
+		return sys_time_msec();
 	default:
 		cprintf("\nSYS_error%d",syscallno);
 		return -E_NO_SYS;
