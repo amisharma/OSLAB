@@ -67,19 +67,33 @@ i386_init(void)
 	// Starting non-boot CPUs
         //cprintf("test_init4");
 	boot_aps();
+//<<<<<<< HEAD
+
+	// Start fs.
+	ENV_CREATE(fs_fs, ENV_TYPE_FS);
+
+//=======
 	//cprintf("test_init");
+//>>>>>>> lab4
 #if defined(TEST)
 	// Don't touch -- used by grading script!
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
+//<<<<<<< HEAD
+	ENV_CREATE(user_icode, ENV_TYPE_USER);
+//=======
 
 	 //cprintf("creating user_yield\n");	
 	ENV_CREATE(user_yield, ENV_TYPE_USER); 
-	ENV_CREATE(user_yield, ENV_TYPE_USER);
-//	ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
+	ENV_CREATE(user_spawnhello, ENV_TYPE_USER);
+	ENV_CREATE(user_hello, ENV_TYPE_USER);
 	  // ENV_CREATE(user_faultalloc, ENV_TYPE_USER);
+//>>>>>>> lab4
 #endif // TEST*
+
+	// Should not be necessary - drains keyboard because interrupt has given up.
+	kbd_intr();
 
 	// Schedule and run the first user environment!
 //	cprintf("creating user_yield\n");	

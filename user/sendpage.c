@@ -29,6 +29,7 @@ umain(int argc, char **argv)
 	// Parent
 	sys_page_alloc(thisenv->env_id, TEMP_ADDR, PTE_P | PTE_W | PTE_U);
 	memcpy(TEMP_ADDR, str1, strlen(str1) + 1);
+	cprintf("calling ipc_send\n");
 	ipc_send(who, 0, TEMP_ADDR, PTE_P | PTE_W | PTE_U);
 
 	ipc_recv(&who, TEMP_ADDR, 0);

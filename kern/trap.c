@@ -226,16 +226,35 @@ trap_dispatch(struct Trapframe *tf)
 		print_trapframe(tf);
 		return;
 	}
-
+//cprintf("entering trap dispathc\n");
 	// Handle clock interrupts. Don't forget to acknowledge the
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
 
+//<<<<<<< HEAD
+	// Handle keyboard and serial interrupts.
+	// LAB 5: Your code here.
+	if(tf->tf_trapno==IRQ_OFFSET+IRQ_KBD)
+	{
+		//cprintf("IRQ_OFFSET+IRQ_KBD trap\n");
+		kbd_intr();
+		return;
+	}
+	if(tf->tf_trapno==IRQ_OFFSET+IRQ_SERIAL)
+        {
+                //cprintf("IRQ_OFFSET+IRQ_serial trap\n");
+                serial_intr();
+                return;
+        }
+//=======
 //=======
 	if(tf->tf_trapno==T_PGFLT)
 	{
-	//	cprintf("pagefault handler\n");
+//		cprintf("pagefault handler\n");
 		page_fault_handler(tf);
+		return;
+	} else if((tf->tf_trapno==T_GPFLT)) {
+		print_trapframe(tf);
 		return;
 	}
 	else if(tf->tf_trapno==T_BRKPT)
@@ -251,6 +270,7 @@ trap_dispatch(struct Trapframe *tf)
 		return;
 	}
 //>>>>>>> lab3
+//>>>>>>> lab4
 	// Unexpected trap: The user process or the kernel has a bug.
 	else if(tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER)
 	{
@@ -266,6 +286,7 @@ trap_dispatch(struct Trapframe *tf)
 		env_destroy(curenv);
 		return;
 	}
+//	cprintf("exiting trap_dispatch\n");
 }
 
 void
@@ -348,7 +369,7 @@ page_fault_handler(struct Trapframe *tf)
 	fault_va = rcr2();
 
 	// Handle kernel-mode page faults.
-	cprintf("entering page fault\n");
+//	cprintf("entering page fault\n");
 	// LAB 3: Your code here.
 	if((tf->tf_cs & 3) == 0)
 	{
@@ -401,10 +422,10 @@ page_fault_handler(struct Trapframe *tf)
                 new_utrap=(struct UTrapframe *)(UXSTACKTOP-sizeof(struct UTrapframe));
 		
 	// Destroy the environment that caused the fault.
-//	cprintf("check user mem\n");
+//	cprintf("check user mem envid=%08x\n",curenv->env_id);
 	user_mem_assert(curenv,(void *)new_utrap,sizeof(struct UTrapframe),perm);
 	//memmove((void *)recurs,(void *)&new_utrap,sizeof(new_utrap));
-//	cprintf("user mem ok");
+//	cprintf("user mem ok utf_fault_va=%08x\n",fault_va);
 	new_utrap->utf_fault_va=fault_va;
         new_utrap->utf_err=tf->tf_err;
         new_utrap->utf_regs=tf->tf_regs;
